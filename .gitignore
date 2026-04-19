@@ -1,0 +1,54 @@
+# NOTE: .mcp.json is deliberately NOT ignored.
+# Project-scoped .mcp.json is the mechanism that gives anyone who clones this
+# repo (Mars, his lab, reviewers, CI) the same jac-mcp wiring. Committing it
+# is the point. If you add a private MCP server that needs secrets, put the
+# secrets in .env (ignored below) and reference them from .mcp.json via
+# environment variable interpolation — never move the whole file out of git.
+
+# Secrets / local env
+.env
+.env.*
+!.env.example
+*.key
+api_keys*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# Jac build artifacts
+__jac_gen__/
+*.jac.py
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Claude Code local-only state (project-scoped settings live in .claude/
+# and should be committed; local overrides should not)
+.claude/settings.local.json
+
+# Eval caches — raw judge outputs and intermediate state.
+# Final `results/RESULTS.md` and committed summary JSONL ARE tracked; only
+# iteration caches are ignored.
+.eval_cache/
+*.cache.jsonl
+logs/
+*.log
