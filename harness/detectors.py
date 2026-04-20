@@ -46,3 +46,10 @@ def uses_typed_edge_archetype(source: str) -> bool:
 
     stripped = strip_comments(source)
     return re.search(r"\bedge\s+\w+", stripped) is not None
+
+
+def uses_connect_op(source: str) -> bool:
+    """Return True if source uses ``++>`` or ``<++>`` to connect nodes."""
+
+    stripped = strip_comments(source)
+    return re.search(r"\+\+>|<\+\+>", stripped) is not None

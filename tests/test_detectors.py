@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from harness.detectors import (
+    uses_connect_op,
     uses_typed_edge_archetype,
     uses_visit,
     uses_walker,
@@ -38,3 +39,13 @@ def test_uses_typed_edge_archetype_positive():
 def test_uses_typed_edge_archetype_negative():
     src = (PYISH / "uses_typed_edge_archetype.jac").read_text()
     assert uses_typed_edge_archetype(src) is False
+
+
+def test_uses_connect_op_positive():
+    src = (IDIOMATIC / "uses_connect_op.jac").read_text()
+    assert uses_connect_op(src) is True
+
+
+def test_uses_connect_op_negative():
+    src = (PYISH / "uses_connect_op.jac").read_text()
+    assert uses_connect_op(src) is False
