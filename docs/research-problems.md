@@ -50,3 +50,15 @@ Not a Haiku-specific weakness — it is a **floor across all free-tier frontier-
 - Write-up discipline: effect-size threshold pre-committed before looking at results, irrelevant-ctrl + noise-floor controls run, judge κ reported with CI — all non-negotiable for paper-readiness.
 
 **What to watch for downstream.** Avoid scope creep that bloats v0 beyond the plan's 51 tasks, but also avoid shortcuts in the harness abstractions that would make v1 scaling painful. The methodology is the deliverable; cutting corners on the methodology is the mistake to guard against.
+
+---
+
+## 2026-04-20 — Free-tier budget pressure: Gemini 3 Flash quota is tight
+
+**What happened.** Gemini 3 Flash Preview free tier = **~20 requests/day**. Today's calibration runs (syntax/01 redo + syntax/02 + syntax/03 + graph/04 + the cost-fix reruns) already hit the daily cap mid-way through graph/04 calibration. Llama 4 Scout on Groq free tier is looser and hasn't been a problem.
+
+**Budget math.** Remaining calibrations: 6 tasks × 5 samples × 1 generator = 30 Gemini requests ⇒ ≥2 more days. Full eval run: 10 tasks × 4 arms × 5 samples = 200 Gemini requests ⇒ ≥10 days if we insist on one generator at a time. Cannot complete v0 in a single-day run. The actual eval will need to be split across multiple days or we change strategy.
+
+**Decision.** Accept calibration may partial-fail. Harden `scripts/calibrate_task.py` to catch 429/quota errors, print what's collected, and move on to the next model/task rather than crashing. For the actual eval (Task 39 orchestrator), build in per-provider quota awareness and resumability via the append-only JSONL state — which the plan already specifies, good. Budget-wise we can also consider: (a) spending modest $ on paid-tier Gemini for the eval proper (≤$5 total spec allows it), (b) reducing K from 5 to 3 on Gemini only, (c) accepting multi-day run windows.
+
+**What to watch for downstream.** Do NOT pass `--include-haiku` to the calibration script except when explicitly instructed. Haiku is paid per-call and calibration doesn't need it. Reserve Haiku invocations for the actual eval run where it's a generator-under-test, not a calibration probe.
