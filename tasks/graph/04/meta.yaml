@@ -1,0 +1,9 @@
+task_id: "04"
+bucket: graph
+created_at: 2026-04-20
+jac_constructs_expected:
+  - node_archetype
+  - edge_archetype
+  - connect_op_forward
+baseline_pass_target: 0.2-0.8
+held_out: false
