@@ -233,6 +233,58 @@ In walker entry abilities, the type filter takes a **type name** — capitalized
 
 ## Runtime / filesystem
 
+### `here` is not valid in node-side abilities — use `self`
+
+Walker-side ability (author is on the walker, arriving at a node of type `Post`):
+
+```jac
+walker Tally {
+    has count: int = 0;
+    can visit_post with Post entry {
+        here.views += 1;      // `here` = the Post node
+        self.count += 1;      // `self` = the walker
+        visit [-->];
+    }
+}
+```
+
+Node-side ability (author is on the node, being visited by a walker of type `Tally`):
+
+```jac
+node Post {
+    has views: int = 0;
+    can on_visit with Tally entry {
+        self.views += 1;      // `self` = the Post node (this instance)
+        visitor.count += 1;   // `visitor` = the arriving walker
+        visit [-->];          // issue further traversal on the walker's behalf
+        // `here` is NOT valid here — would error at runtime
+    }
+}
+```
+
+Confirmed via `jac://docs/osp` § Walkers § 8 ("Special References") — the reference matrix explicitly lists `here=N/A` for node abilities. Since `here` is idiomatic in walker-side abilities, Python-minded authors (and LLMs trained on walker-side examples) will reach for it inside a node-side ability and hit a runtime error.
+
+### The `with <Type> entry` clause is context-polarized
+
+Same syntactic form means two different things depending on where it's declared:
+
+| Where declared | `<Type>` means | `here` | `self` | `visitor` |
+|---|---|---|---|---|
+| inside `walker` | node type the walker is arriving at | the node | the walker | N/A |
+| inside `node` | walker type arriving at this node | N/A | the node | the walker |
+
+The type name after `with` has **opposite polarity** between the two contexts. `jac://docs/osp` § Nodes § 2 notes the distinction but it's easy to miss:
+
+> "In node abilities, the type expression after `with` refers to the *walker* type visiting this node, NOT the node type."
+
+**Doc-bug candidate.** The polarity flip deserves a prominent side-by-side example in `jac://docs/osp` — the current presentation treats the two contexts separately and the symmetry/asymmetry isn't obvious from a single reading.
+
+### `visit [-->]` from inside a node-side ability
+
+Not documented explicitly in `jac://docs/osp` § Walkers (which shows `visit` only in walker-side ability examples), but **runtime-verified to work**. The node-side ability, once triggered, can queue the walker's next traversal steps on the walker's behalf. This is the mechanism that lets "behavior on arrival at this node type" live fully on the node archetype rather than being forced onto the walker.
+
+Probe-confirmed 2026-04-20 on a 3-cycle `A → B → C → A` with node-side `can tick with W entry { self.views += 1; visit [-->]; }`: traversal proceeds through all three nodes exactly once (walker-side visited-set dedupe applied). Doc-coverage gap — worth flagging upstream.
+
 ### `jac run` and `jac test` persist root-level graph state across runs
 
 Jac writes lock and cache files (`.jac*`, `jac.lock`, `__jac_gen__/`) in the current working directory and **persists graph state attached to `root` across runs**. Entry-block probes that do `root ++> some_node;` will accumulate nodes run over run, producing misleading visit counts on the second run onward.
