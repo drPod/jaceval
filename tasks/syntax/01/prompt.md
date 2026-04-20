@@ -2,7 +2,7 @@
 
 Write a Jac module that defines:
 
-1. An `obj Item` with two typed fields: `price` (float) and `qty` (int).
+1. A record-like type `Item` with two typed fields: `price` (float) and `qty` (int).
 2. A function `total_cost(items: list[Item]) -> float` that returns the sum of `price * qty` across every item in the list. An empty list returns `0.0`.
 
 Examples:
@@ -13,4 +13,4 @@ Examples:
 
 Write both the `Item` definition and the `total_cost` function in a single file. Do not print anything; just define them.
 
-Output raw Jac source only. No Markdown, no ``` fences, no commentary. Remember Jac requires `has` before every field declaration inside an `obj`.
+Output raw Jac source only. No Markdown, no ``` fences, no commentary.
