@@ -89,4 +89,25 @@ def _call_gemini(prompt: str, temperature: float, max_tokens: int, seed: int) ->
 
 
 def _call_groq(prompt: str, temperature: float, max_tokens: int, seed: int) -> Generation:
-    raise NotImplementedError("implemented in Task 10")
+    from dotenv import load_dotenv
+    load_dotenv()
+    from groq import Groq
+    client = Groq(api_key=os.environ["GROQ_API_KEY"])
+    start = time.monotonic()
+    resp = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        temperature=temperature,
+        max_tokens=max_tokens,
+        seed=seed,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    wall_ms = int((time.monotonic() - start) * 1000)
+    choice = resp.choices[0]
+    return Generation(
+        model="llama-3.3-70b-versatile",
+        completion=choice.message.content or "",
+        finish_reason=choice.finish_reason or "stop",
+        input_tokens=resp.usage.prompt_tokens,
+        output_tokens=resp.usage.completion_tokens,
+        wall_ms=wall_ms,
+    )

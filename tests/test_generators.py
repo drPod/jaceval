@@ -45,3 +45,9 @@ def test_claude_live_roundtrip():
 def test_gemini_live_roundtrip():
     g = generate(model="gemini-2.5-pro", prompt="Reply with exactly the word: ok", temperature=0.0, max_tokens=8, seed=0)
     assert "ok" in g.completion.lower()
+
+
+@pytest.mark.skipif(not os.getenv("GROQ_API_KEY"), reason="no Groq key")
+def test_groq_live_roundtrip():
+    g = generate(model="llama-3.3-70b-versatile", prompt="Reply with exactly the word: ok", temperature=0.0, max_tokens=8, seed=0)
+    assert "ok" in g.completion.lower()
