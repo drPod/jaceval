@@ -187,6 +187,66 @@ matching edge; use the loop pattern when only one specific edge should change.
 
 ---
 
+## Walkers and traversal
+
+### Walkers do NOT auto-dedupe visited nodes
+
+A bare `visit [-->]` inside a walker entry ability on a graph with a cycle (`A → B → A`) loops indefinitely — Jac does not maintain a visited set for you. Confirmed via runtime probe 2026-04-20; `jac://docs/osp` § Walkers makes no claim of automatic dedupe, despite being the single most load-bearing assumption a Python-minded author brings to the traversal primitive.
+
+The idiomatic fix is a visited-set field on the walker, keyed on `jid(here)`:
+
+```jac
+walker CountByType {
+    has visited: set[str] = set();
+    has person_count: int = 0;
+
+    can count_person with Person entry {
+        if jid(here) in self.visited { return; }
+        self.visited.add(jid(here));
+        self.person_count += 1;
+        visit [-->];
+    }
+    // ... repeated per NodeType ability
+}
+```
+
+**Doc-bug candidate.** `jac://docs/osp` § Walkers should explicitly call out that `visit` semantics are "traverse again each time" and that the author is responsible for dedupe.
+
+### Generic `can ... with entry` only fires at the spawn location
+
+A walker with only `can tick with entry { visit [-->]; }` and no typed-node-entry ability fires the ability once at the spawn node and **does not continue traversing**. To walk the graph and fire per node, the walker needs a `can <name> with <NodeType> entry { ... visit [-->]; }` for each type it should react to (and a `with Root entry` if spawned from `root`).
+
+### `start spawn Walker()` returns the walker instance with accumulated state
+
+```jac
+w = start spawn CountByType();   // traversal runs synchronously
+return (w.person_count, w.org_count);
+```
+
+Read `has`-fields directly off the returned value. No `.reports` needed for simple state-collection cases. Spawn form is `<node> spawn <WalkerType>(<init_args>)`.
+
+### Capitalization: `with Root entry`, not `with root entry`
+
+In walker entry abilities, the type filter takes a **type name** — capitalized `Root` is the type; lowercase `root` is the global instance and would need backtick escaping to appear as a type filter (which is not the intended form). Mirror the same rule for any user-defined `node Foo` — use `with Foo entry`, never `with foo entry`.
+
+---
+
+## Runtime / filesystem
+
+### `jac run` and `jac test` persist root-level graph state across runs
+
+Jac writes lock and cache files (`.jac*`, `jac.lock`, `__jac_gen__/`) in the current working directory and **persists graph state attached to `root` across runs**. Entry-block probes that do `root ++> some_node;` will accumulate nodes run over run, producing misleading visit counts on the second run onward.
+
+**For probes**: clear state between runs:
+
+```bash
+rm -rf .jac* jac.lock __jac_gen__ && jac run probe.jac
+```
+
+**For `tests.jac`**: each test block creates disconnected nodes that aren't touched to `root`, so persistence isn't an issue — but any test that intentionally uses `root` will leak state into the next test. The harness orchestrator (Task 39) must treat each generation as running in a fresh cwd or clean these files between runs.
+
+---
+
 ## Meta rule
 
 Never trust training-data Jac syntax. Python intuition silently fails in many
