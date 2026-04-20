@@ -37,8 +37,7 @@ jaceval/
 │   └── walker/{07,08,09,10}/...
 ├── arms/
 │   ├── no-skill/arm.md
-│   ├── llmdocs-mini/{arm.md, SOURCE.md}
-│   ├── llmdocs-full/{arm.md, SOURCE.md}
+│   ├── llmdocs/{arm.md, SOURCE.md}            # single canonical jac-llmdocs.md
 │   ├── v0-skill/arm.md               # written Day 10
 │   └── irrelevant-ctrl/arm.md        # written Day 10
 ├── harness/
@@ -975,67 +974,48 @@ git commit -m "chore: e2e smoke script confirms generator → runner path"
 
 ## PHASE 4 — Arm content (Day 3 AM)
 
-### Task 13: Fetch LLMDocs-Mini and LLMDocs-Full
+### Task 13: Fetch the canonical Jaseci LLMDocs
 
 **Files:**
-- Create: `scripts/fetch_llmdocs.py`
-- Create: `arms/llmdocs-mini/arm.md`
-- Create: `arms/llmdocs-mini/SOURCE.md`
-- Create: `arms/llmdocs-full/arm.md`
-- Create: `arms/llmdocs-full/SOURCE.md`
+- Create: `arms/llmdocs/arm.md`
+- Create: `arms/llmdocs/SOURCE.md`
 
-- [ ] **Step 1: Find the canonical URLs**
+**Revision note:** the plan originally specified separate `llmdocs-mini` and `llmdocs-full` arms. Investigation on 2026-04-19 showed Jaseci publishes only a single canonical artifact: `jac-llmdocs.md`, distributed via GitHub Releases from `jaseci-labs/jaseci-llmdocs`. There is no Mini/Full split. The current latest release is **v0.12.1**.
 
-Use `jac-mcp`'s `search_docs` or WebFetch against `docs.jaseci.org`. Typical URLs:
-- `https://docs.jaseci.org/llms-mini.txt` or similar
-- `https://docs.jaseci.org/llms-full.txt` or similar
-
-Confirm the exact URLs by inspecting docs.jaseci.org. Record them in `SOURCE.md` for each arm.
-
-- [ ] **Step 2: Write the fetch script**
-
-```python
-# scripts/fetch_llmdocs.py
-import sys, urllib.request
-from pathlib import Path
-
-SOURCES = {
-    "arms/llmdocs-mini/arm.md": "https://docs.jaseci.org/LLMDOCS_MINI_URL",   # fill after Step 1
-    "arms/llmdocs-full/arm.md": "https://docs.jaseci.org/LLMDOCS_FULL_URL",   # fill after Step 1
-}
-
-for dest, url in SOURCES.items():
-    Path(dest).parent.mkdir(parents=True, exist_ok=True)
-    with urllib.request.urlopen(url) as r:
-        Path(dest).write_text(r.read().decode("utf-8"))
-    print(f"fetched {url} -> {dest}")
-```
-
-- [ ] **Step 3: Fill in the URLs and run**
+- [ ] **Step 1: Fetch the artifact**
 
 ```bash
-.venv/bin/python scripts/fetch_llmdocs.py
+mkdir -p arms/llmdocs
+curl -sL https://github.com/jaseci-labs/jaseci-llmdocs/releases/download/v0.12.1/jac-llmdocs.md \
+  -o arms/llmdocs/arm.md
+wc -l arms/llmdocs/arm.md   # expect ~562 lines
+shasum -a 256 arms/llmdocs/arm.md   # expect aad6a2e2ca7925acb2ce782a91e43785c69b0403a4487d031be76077c7b3091d
 ```
-Expected: both arm files populated with non-empty content.
 
-- [ ] **Step 4: Write SOURCE.md for each**
+- [ ] **Step 2: Write `arms/llmdocs/SOURCE.md`**
 
 ```markdown
-# arms/llmdocs-mini/SOURCE.md
-Source: <the actual URL>
-Fetched: 2026-04-DD
-SHA256: <compute with `shasum -a 256 arms/llmdocs-mini/arm.md`>
-License: see jaseci.org; redistributed here verbatim for evaluation purposes under fair use.
+# arms/llmdocs — source and provenance
+
+**Source:** https://github.com/jaseci-labs/jaseci-llmdocs/releases/download/v0.12.1/jac-llmdocs.md
+**Release:** [llmdocs v0.12.1](https://github.com/jaseci-labs/jaseci-llmdocs/releases/tag/v0.12.1)
+**Fetched:** 2026-04-19
+**SHA256:** aad6a2e2ca7925acb2ce782a91e43785c69b0403a4487d031be76077c7b3091d
+**Size:** 562 lines / 22,835 bytes
+
+This arm is the verbatim canonical Jac language reference published by Jaseci
+Labs, intended for LLM context windows. Committed so the eval is reproducible
+without depending on upstream availability.
 ```
 
-Same shape for `llmdocs-full/SOURCE.md`.
-
-- [ ] **Step 5: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
-git add scripts/fetch_llmdocs.py arms/llmdocs-mini/ arms/llmdocs-full/
-git commit -m "feat(arms): fetch and pin LLMDocs-Mini and LLMDocs-Full"
+git add arms/llmdocs/
+git commit -m "feat(arms): pin Jaseci jac-llmdocs.md v0.12.1 as llmdocs arm"
 ```
+
+Then `git push`.
 
 ---
 
@@ -1813,7 +1793,7 @@ git commit -m "feat(stats): pass@k unbiased, mcnemar exact, paired bootstrap, wi
 from harness.plan_builder import build_plan
 
 def test_build_plan_yields_full_cross_product(tmp_path):
-    arms = ["no-skill", "llmdocs-mini"]
+    arms = ["no-skill", "llmdocs"]
     models = ["claude-haiku-4-5", "gemini-3-flash-preview"]
     tasks = ["01", "02"]
     plan = list(build_plan(arms=arms, models=models, task_ids=tasks, n_samples=3, seed_base=0))
@@ -1974,7 +1954,7 @@ def main():
     ap.add_argument("--out", type=Path, default=CACHE / "results.jsonl")
     ap.add_argument("--limit", type=int, default=None, help="run only first N entries")
     ap.add_argument("--build-plan", action="store_true", help="if given, (re)build plan from defaults and exit")
-    ap.add_argument("--arms", nargs="+", default=["no-skill", "llmdocs-mini", "llmdocs-full"])
+    ap.add_argument("--arms", nargs="+", default=["no-skill", "llmdocs"])
     ap.add_argument("--models", nargs="+", default=["claude-haiku-4-5", "gemini-3-flash-preview", "meta-llama/llama-4-scout-17b-16e-instruct"])
     ap.add_argument("--tasks", nargs="+", default=[f"{i:02d}" for i in range(1, 11)])
     ap.add_argument("--n-samples", type=int, default=5)
@@ -2036,7 +2016,7 @@ git commit -m "feat(run): orchestrator reads plan, executes, appends JSONL"
 
 ```bash
 .venv/bin/python -m harness.run --build-plan \
-  --arms no-skill llmdocs-mini llmdocs-full \
+  --arms no-skill llmdocs \
   --models claude-haiku-4-5 gemini-3-flash-preview meta-llama/llama-4-scout-17b-16e-instruct \
   --tasks 01 02 03 04 05 06 07 08 09 10 \
   --n-samples 5 \
@@ -2370,7 +2350,7 @@ for (arm, model), rs in sorted(group_by([r for r in rows if is_dev(r)], "arm", "
 
 # --- Paired deltas: (skill_arm vs no-skill) per model, with bootstrap CI
 print("\n## Paired deltas (dev set only)\n")
-for skill_arm in ["llmdocs-mini", "llmdocs-full", "v0-skill", "irrelevant-ctrl"]:
+for skill_arm in ["llmdocs", "v0-skill", "irrelevant-ctrl"]:
     for model in ["claude-haiku-4-5", "gemini-3-flash-preview", "meta-llama/llama-4-scout-17b-16e-instruct"]:
         a_rows = [r for r in rows if is_dev(r) and r["entry"]["arm"] == skill_arm and r["entry"]["model"] == model]
         b_rows = [r for r in rows if is_dev(r) and r["entry"]["arm"] == "no-skill" and r["entry"]["model"] == model and r["entry"].get("group", "main") == "main"]
@@ -2629,7 +2609,7 @@ Not a code task; a communications task. Draft:
 
 > Hey — spent the last ~two weeks building v0 of what I had in mind after our 4/9 conversation. It's public at github.com/drPod/jaceval.
 >
-> 10 Jac tasks, 3 generator models (Haiku, Gemini 2.5 Pro, Llama 3.3 70B via Groq), 5 context arms including both your LLMDocs-Mini and LLMDocs-Full. Paired A/B design, execution-based correctness via `jac run`, hybrid AST + LLM-judge idiomaticity with the judge validated against my hand labels at Cohen's κ=<X.XX>. Pre-committed effect thresholds, noise-floor and irrelevant-context controls, held-out set. Writeup in `results/RESULTS.md`; spec in `docs/specs/`; literature foundation in `design-recipe.md`.
+> 10 Jac tasks, 3 generator models (Claude Haiku 4.5, Gemini 3 Flash Preview, Llama 4 Scout 17B via Groq), 4 context arms including your canonical `jac-llmdocs.md` v0.12.1. Paired A/B design, execution-based correctness via `jac run`, hybrid AST + LLM-judge idiomaticity (GPT-OSS 120B via Groq — different family from all generators) validated against my hand labels at Cohen's κ=<X.XX>. Pre-committed effect thresholds, noise-floor and irrelevant-context controls, held-out set. Writeup in `results/RESULTS.md`; spec in `docs/specs/`; literature foundation in `design-recipe.md`.
 >
 > Headline: <one sentence summary of the finding>.
 >

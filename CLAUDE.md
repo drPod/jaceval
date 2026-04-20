@@ -77,7 +77,7 @@ Two deliverables are first-class, not one: a validated evaluation **methodology*
 ### v0 scope
 
 - **10 hand-authored Jac tasks**, stratified 3 syntax/types / 3 graph-construction / 4 walker-traversal. The `by llm()` bucket is deferred (see below).
-- **4 context arms**: no-skill, Jaseci's LLMDocs-Mini, Jaseci's LLMDocs-Full, and this project's v0 SKILL.md.
+- **4 context arms**: `no-skill`, Jaseci's canonical `jac-llmdocs.md` (pinned to release v0.12.1), this project's `v0-skill` (SKILL.md), and `irrelevant-ctrl` (a length-matched Gleam SKILL.md as a "more tokens" null). Originally specced as separate LLMDocs-Mini and LLMDocs-Full variants; discovered 2026-04-19 that Jaseci publishes only one canonical artifact, so collapsed to a single `llmdocs` arm.
 - **3 generator models**: Claude Haiku 4.5, Gemini 3 Flash Preview (free tier), Llama 4 Scout 17B via Groq (free tier). Choices finalized 2026-04-19 after confirming Gemini 3 *Pro* Preview is not on free tier (429 quota).
 - **Judge**: `openai/gpt-oss-120b` via Groq (free tier). Deliberately NOT Anthropic, NOT Google, NOT Meta — so no self-preference bias against any of the three generator families. Single-judge for v0; dual-judge ensemble deferred to v1. 3 runs per snippet, median.
 - **Budget ceiling**: ≤ $5 total API spend. Design choices that would push past this are flagged, not assumed.

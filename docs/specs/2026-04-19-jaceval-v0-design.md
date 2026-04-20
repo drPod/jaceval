@@ -39,19 +39,20 @@ No published Jac codegen benchmark exists. Jaseci Labs ships `LLMDocs` artifacts
 
 ## 5. Experimental design
 
-### 5.1 Arms (five total)
+### 5.1 Arms (four total)
 
 | Arm | Purpose | Content |
 |---|---|---|
-| `no-skill` | Baseline; anchors the paired deltas | Empty context block (just the task prompt) |
-| `llmdocs-mini` | Tests Jaseci's existing compact doc | Verbatim copy of `LLMDocs-Mini` from docs.jaseci.org, with a citation header |
-| `llmdocs-full` | Tests Jaseci's existing full doc | Verbatim copy of `LLMDocs-Full` from docs.jaseci.org, with a citation header |
-| `v0-skill` | Our hypothesis | `SKILL.md` authored after baseline, targeting observed failures |
-| `irrelevant-ctrl` | Controls for "more tokens" effect | A SKILL.md for Gleam, authored on Day 10 to length-match `v0-skill` within ±10%, and run only at that point |
+| `no-skill` | Baseline; anchors the paired deltas | Minimal context block (just the task prompt) |
+| `llmdocs` | Tests Jaseci's official LLM-facing doc | Verbatim `jac-llmdocs.md` from [jaseci-labs/jaseci-llmdocs release v0.12.1](https://github.com/jaseci-labs/jaseci-llmdocs/releases/tag/v0.12.1), pinned by SHA256. 562 lines covering 17 sections of Jac. |
+| `v0-skill` | Our hypothesis | `SKILL.md` authored after the baseline, targeting observed failures |
+| `irrelevant-ctrl` | Controls for the "more tokens" effect | A SKILL.md for Gleam, authored on Day 10 to length-match `v0-skill` within ±10%, and run only at that point |
+
+**Revision note (2026-04-19, before any eval ran):** the original spec named both `llmdocs-mini` and `llmdocs-full` as separate arms. Discovered via live investigation that Jaseci Labs publishes only a single canonical artifact (`jac-llmdocs.md`, from `jaseci-labs/jaseci-llmdocs` GitHub releases) — no Mini/Full split exists. Collapsed to a single `llmdocs` arm. Total arm count reduced from 5 to 4.
 
 Noise-floor check: the `no-skill` arm is also run a second time with a different random seed for every (model, task). Any SKILL.md effect that does not exceed this floor is not a real effect.
 
-**Run order:** the baseline matrix on Day 9 executes arms `{no-skill, llmdocs-mini, llmdocs-full}` plus the `no-skill` noise-floor re-run. On Day 10, after `v0-skill` is authored from the baseline failure analysis, `v0-skill` and the length-matched `irrelevant-ctrl` are run together so the two are directly comparable.
+**Run order:** the baseline matrix on Day 9 executes arms `{no-skill, llmdocs}` plus the `no-skill` noise-floor re-run. On Day 10, after `v0-skill` is authored from the baseline failure analysis, `v0-skill` and the length-matched `irrelevant-ctrl` are run together so the two are directly comparable.
 
 ### 5.2 Generator models (three)
 
@@ -107,7 +108,7 @@ Each task lives in `tasks/<bucket>/<id>/` and contains:
 
 - **Order freeze:** task order, arm order within each task, model order within each arm, and seed sequence are fixed in a single `run_plan.jsonl` generated before any API call. The same plan is re-used when adding the `v0-skill` arm post-baseline.
 
-Total generations per full run: 5 arms × 3 models × 10 tasks × 5 samples = **750** experimental generations, plus 150 noise-floor re-generations = **900 total**.
+Total generations per full run: 4 arms × 3 models × 10 tasks × 5 samples = **600** experimental generations, plus 150 noise-floor re-generations = **750 total**.
 
 ## 6. Measurement
 
