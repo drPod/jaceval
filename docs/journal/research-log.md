@@ -64,3 +64,20 @@ Not a Haiku-specific weakness — it is a **floor across all free-tier frontier-
 **What to watch for downstream.** Do NOT pass `--include-haiku` to the calibration script except when explicitly instructed. Haiku is paid per-call and calibration doesn't need it. Reserve Haiku invocations for the actual eval run where it's a generator-under-test, not a calibration probe.
 
 **v1 generator-tier note (2026-04-20).** If Mars backs this work with resources, the actual eval run in v1 will use stronger generators (Sonnet/Opus tier, Gemini 3 Pro, Llama 405B, etc.) — not the free-tier models pinned here for v0. The free-tier choice is a v0 budget constraint, not a methodological commitment. The harness's model-dispatch interface (`harness/generators.py`) already abstracts this cleanly: swap the `ModelName` literal and the three `_call_*` functions and the rest of the pipeline is untouched. Keep that abstraction clean as we build downstream.
+
+---
+
+## 2026-04-20 — Milestone: all 10 v0 paired tasks authored (Phase 5 complete)
+
+**State.** Tasks 16–25 landed. 10 tasks across 3 strata:
+- **Syntax (3):** 01 typed list-agg, 02 obj with methods, 03 filter-comprehension *HELD OUT*.
+- **Graph (3):** 04 directional build, 05 bidirectional with typed edges, 06 typed-edge mutation.
+- **Walker (4):** 07 count-by-type, 08 disengage-early, 09 node-side abilities, 10 path-aggregation *HELD OUT*.
+
+All 10 solution.jac files validate clean, all 10 tests.jac pass 5/5. Baseline calibration aggregate **0/10 across Gemini 3 Flash + Llama 4 Scout for every task** — the floor-across-free-tier-models pattern held throughout, not Haiku-specific. This is the strongest pre-registered evidence we have that context docs should produce large, discrete lift on this eval (vs. marginal quantitative lift).
+
+**Pitfalls log state.** `docs/findings/jac-pitfalls.md` now carries 16+ distinct empirically-confirmed Jac gotchas across statements, tests, imports, graph/OSP, and walkers. Several are doc-vs-runtime discrepancies suitable for upstream bug reports to Jaseci. These are first-class research artifacts alongside the task set.
+
+**Methodology invariants held.** Paired A/B purity maintained in every prompt (no Jac keyword leaks in any of the 10 `prompt.md` files). `validate_jac` round-trip executed on every solution. HELD OUT tasks (03, 10) marked `held_out: true` in meta.yaml. Calibration protocol (free-tier default, no rescue hints for 0/n baselines) followed throughout. Subagent-driven development with routing discipline enforced via `docs/plans/subagent-dispatch-template.md`.
+
+**What's next.** Phase 6: Tasks 26–31 implement 6 pattern-based AST idiom detectors (`uses_walker`, `uses_visit`, `uses_typed_edge_archetype`, `uses_connect_op`, `has_type_annotations`, `uses_abilities_on_nodes`) per the plan. Each is ~5–15 lines of regex over comment-stripped Jac source. Small, mechanical work — plan to dispatch as a batch to one subagent rather than six separate dispatches, to minimize overhead.
