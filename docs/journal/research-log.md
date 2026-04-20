@@ -102,3 +102,41 @@ All 10 solution.jac files validate clean, all 10 tests.jac pass 5/5. Baseline ca
 3. **Judge validated against hand labels at κ ≥ 0.4** — done, κ = 0.500.
 
 **What's next.** Phase 8 (Tasks 36–37): scorer combines AST + judge into per-task idiomaticity, then the statistics module (unbiased pass@k via Chen, McNemar's on paired binary, paired bootstrap on ordinal, Wilson intervals — the full statistical backbone the design recipe calls for). Then Phase 9 (plan builder + orchestrator), then the actual eval run.
+
+---
+
+## 2026-04-20 — Arm authorship surfaced a pitfall we hadn't found by task authorship
+
+While authoring `arms/v0-skill/arm.md` from the existing 16-pitfall log, the subagent discovered a pitfall that had not appeared in any eval-task work: **Jac has no `let` keyword**. Local bindings are bare assignments; `let x = 5;` fails with `Missing ';'` at the `=` plus `Name 'let' may be undefined`. Rust/TypeScript intuition makes `let` a default reach for LLMs (and for the subagent — it wrote several `let`s in the first draft before `validate_jac` caught it).
+
+**Methodology implication.** Arm authorship is itself a discovery method, not merely a response to prior-discovered failures. The hand-labeled pitfall corpus was built from authoring 10 eval tasks; writing the teaching doc *about* those tasks revealed a 17th pitfall independent of any task. That suggests there may be more surface-level Jac traps we haven't caught yet, and future v1 work should treat any reference-material authoring (tasks, arm docs, validation snippets) as candidates for discovering new pitfalls — not just as consumers of them.
+
+**Process change.** Every code example embedded in an arm file (not just eval-task `solution.jac`) must `validate_jac` before commit. The subagent-dispatch template should mention this explicitly so arm-authoring and task-authoring have symmetric discipline.
+
+---
+
+## 2026-04-20 — Mini-run scope decided (deeper-than-SKILL-helps)
+
+Decision: before requesting Mars's backing for a full-scale run (3 models × 5 samples × noise-floor = expensive), execute a mini-run that demonstrates methodological rigor rather than the trivial `v0-skill > no-skill` result. Shape:
+
+- **4 arms**: no-skill, llmdocs, v0-skill, irrelevant-ctrl.
+- **1 model**: Llama 4 Scout 17B via Groq (most reliable free-tier model, no quota headache).
+- **All 10 tasks** (2 held out) — preserves stratum coverage.
+- **3 samples** per (arm × task) — 4 × 10 × 3 = 120 generator calls + 360 judge calls.
+
+Four cuts the run is designed to deliver, numbered by interest priority:
+1. Per-arm pass rate + Wilson 95% CI + mean idiomaticity (baseline).
+2. **v0-skill vs llmdocs**: paired flip table, McNemar, paired-bootstrap 95% CI on idiomaticity Δ — answers "does our doc beat Jaseci's existing doc?"
+3. **Per-construct AST breakdown**: which specific Jac idioms does each arm teach? Per-detector activation rate per arm.
+4. **Correctness-vs-idiomaticity dissociation**: pass_hi / pass_lo / fail_hi / fail_lo contingency per arm — shows the cases a correctness-only eval would miss. Validates the hybrid AST+judge score.
+5. Bonus: **v0-skill vs irrelevant-ctrl** — tokens-don't-matter falsification.
+
+What makes this defensible as a Mars-note deliverable is cuts 2/3/4, not cut 1. Cut 1 is trivially "yes docs help"; cuts 2–4 are where the methodology earns its keep.
+
+---
+
+## 2026-04-20 — Authored v0-skill + irrelevant-ctrl. Known shape-alignment caveat.
+
+`arms/v0-skill/arm.md` (2,761 words) derived from the 17-pitfall log; covers 19/21 authorship-relevant pitfalls. `arms/irrelevant-ctrl/arm.md` (2,818 words, 102% of v0-skill — within ±5% target) pulled from Gleam's tour, cheatsheet, and language reference.
+
+**Shape-alignment caveat.** The v0-skill uses standard OSP teaching archetypes — `Person`, `City`, `Road`, `Post` — as its code examples. `Road` with a `distance: float` edge field directly mirrors graph/06's setup; `Post` with a `views: int` counter mirrors walker/09's. Both are also stock teaching archetypes in Jaseci's own LLMDocs, so the comparison `v0-skill` vs `llmdocs` is not advantaged/disadvantaged by the choice. But `v0-skill` vs `no-skill` should read any walker/09 and graph/06 lift with this in mind — v0-skill may be partly "here's a pattern very close to the one the task needs" rather than purely "here's how Jac works." The per-stratum breakdown (cut 3) will make this visible: if lift concentrates on walker/09 and graph/06 specifically, pattern-proximity is the explanation. v1 SKILL.md authoring should explicitly avoid type names and field shapes used by any eval task to tighten this.

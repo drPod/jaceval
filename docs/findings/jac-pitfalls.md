@@ -299,6 +299,34 @@ rm -rf .jac* jac.lock __jac_gen__ && jac run probe.jac
 
 ---
 
+## No `let` keyword — assignments are bare
+
+```jac
+# WRONG — parse error, "Missing ';'" at the '=' plus "Name 'let' may be undefined"
+with entry {
+    let x = 5;
+    print(x);
+}
+
+# RIGHT — local bindings are bare assignments
+with entry {
+    x = 5;
+    print(x);
+}
+
+# Module-scope globals use `glob`, not `let`:
+glob counter: int = 0;
+```
+
+Rust and TypeScript/JavaScript both use `let` heavily for local bindings, so
+training-data intuition reaches for it. Jac has none — locals are plain
+assignments, module globals are `glob`. Confirmed 2026-04-20 by
+`validate_jac` during v0-skill authoring (the pitfall was discovered by
+writing the teaching doc, not by running the eval — arm authorship is itself a
+discovery method).
+
+---
+
 ## Comment syntax
 
 ### Bare `root` is deprecated — use `root()`
