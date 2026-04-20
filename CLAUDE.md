@@ -127,3 +127,4 @@ Write as a peer proposing a research artifact, not as a student submitting homew
 - `results/` — raw JSONL + `RESULTS.md` writeup.
 - `docs/specs/` — design specs.
 - `design-recipe.md` — the literature review that underpins this project.
+- `docs/research-problems.md` — append-only log of research-process problems encountered during implementation (calibration tensions, methodology trade-offs, prompt-design traps). Record each problem, the decision made, and what to watch for downstream. Consult before making non-obvious methodology calls.
