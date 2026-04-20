@@ -60,7 +60,32 @@ def _call_claude(prompt: str, temperature: float, max_tokens: int, seed: int) ->
 
 
 def _call_gemini(prompt: str, temperature: float, max_tokens: int, seed: int) -> Generation:
-    raise NotImplementedError("implemented in Task 9")
+    from dotenv import load_dotenv
+    load_dotenv()
+    from google import genai
+    from google.genai import types
+    client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
+    start = time.monotonic()
+    resp = client.models.generate_content(
+        model="gemini-2.5-pro",
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            temperature=temperature,
+            max_output_tokens=max_tokens,
+            seed=seed,
+        ),
+    )
+    wall_ms = int((time.monotonic() - start) * 1000)
+    text = resp.text or ""
+    usage = resp.usage_metadata
+    return Generation(
+        model="gemini-2.5-pro",
+        completion=text,
+        finish_reason=(resp.candidates[0].finish_reason.name if resp.candidates else "stop"),
+        input_tokens=(usage.prompt_token_count if usage else 0),
+        output_tokens=(usage.candidates_token_count if usage else 0),
+        wall_ms=wall_ms,
+    )
 
 
 def _call_groq(prompt: str, temperature: float, max_tokens: int, seed: int) -> Generation:

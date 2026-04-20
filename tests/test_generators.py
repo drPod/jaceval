@@ -39,3 +39,9 @@ def test_claude_live_roundtrip():
     assert "ok" in g.completion.lower()
     assert g.input_tokens > 0
     assert g.output_tokens > 0
+
+
+@pytest.mark.skipif(not os.getenv("GOOGLE_API_KEY"), reason="no Google key")
+def test_gemini_live_roundtrip():
+    g = generate(model="gemini-2.5-pro", prompt="Reply with exactly the word: ok", temperature=0.0, max_tokens=8, seed=0)
+    assert "ok" in g.completion.lower()
