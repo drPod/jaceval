@@ -22,19 +22,32 @@ _JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
 JUDGE_MODEL = "openai/gpt-oss-120b"
 
 
+_MAX_RETRIES = 3
+_RETRY_BACKOFF_S = 2.0
+
+
 def _call_judge(prompt: str, *, temperature: float = 0.3, max_tokens: int = 1024, seed: int = 0) -> str:
     from dotenv import load_dotenv
     load_dotenv()
-    from groq import Groq
+    from groq import APIConnectionError, APIError, Groq, RateLimitError
     client = Groq(api_key=os.environ["GROQ_API_KEY"])
-    resp = client.chat.completions.create(
-        model=JUDGE_MODEL,
-        temperature=temperature,
-        max_tokens=max_tokens,
-        seed=seed,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return resp.choices[0].message.content or ""
+    last_err: Exception | None = None
+    for attempt in range(_MAX_RETRIES):
+        try:
+            resp = client.chat.completions.create(
+                model=JUDGE_MODEL,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                seed=seed,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            return resp.choices[0].message.content or ""
+        except (APIConnectionError, RateLimitError, APIError) as err:
+            last_err = err
+            if attempt == _MAX_RETRIES - 1:
+                break
+            time.sleep(_RETRY_BACKOFF_S * (2 ** attempt))
+    raise RuntimeError(f"judge call failed after {_MAX_RETRIES} retries: {last_err}")
 
 
 def judge_once(*, task_rubric: str, reference_solution: str, candidate_code: str, seed: int | None = None) -> dict:
