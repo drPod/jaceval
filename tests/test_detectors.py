@@ -2,6 +2,7 @@ from pathlib import Path
 
 from harness.detectors import (
     has_type_annotations,
+    uses_abilities_on_nodes,
     uses_connect_op,
     uses_typed_edge_archetype,
     uses_visit,
@@ -64,3 +65,13 @@ def test_has_type_annotations_negative():
 
 def test_has_type_annotations_vacuously_true_on_empty():
     assert has_type_annotations("") is True
+
+
+def test_uses_abilities_on_nodes_positive():
+    src = (IDIOMATIC / "uses_abilities_on_nodes.jac").read_text()
+    assert uses_abilities_on_nodes(src) is True
+
+
+def test_uses_abilities_on_nodes_negative():
+    src = (PYISH / "uses_abilities_on_nodes.jac").read_text()
+    assert uses_abilities_on_nodes(src) is False

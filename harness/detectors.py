@@ -57,6 +57,22 @@ def uses_connect_op(source: str) -> bool:
 
 _HAS_DECL_RE = re.compile(r"\bhas\s+\w+([^;\n=]*)")
 _DEF_SIG_RE = re.compile(r"\bdef\s+\w+\s*\(([^)]*)\)([^{]*)\{", re.DOTALL)
+_NODE_HEAD_RE = re.compile(r"\bnode\s+\w+\s*\{")
+_ABILITY_RE = re.compile(r"\bcan\s+\w+\s+with\s+\w+\s+entry\b")
+
+
+def _block_at(source: str, open_brace_idx: int) -> str:
+    """Return the substring between the brace at ``open_brace_idx`` and its match."""
+
+    depth = 1
+    i = open_brace_idx + 1
+    while i < len(source) and depth > 0:
+        if source[i] == "{":
+            depth += 1
+        elif source[i] == "}":
+            depth -= 1
+        i += 1
+    return source[open_brace_idx + 1:i - 1]
 
 
 def has_type_annotations(source: str) -> bool:
@@ -82,3 +98,18 @@ def has_type_annotations(source: str) -> bool:
             return False
 
     return True
+
+
+def uses_abilities_on_nodes(source: str) -> bool:
+    """Return True if at least one ``node`` archetype declares a ``can ... with <W> entry``
+    ability inside its own block (node-side ability). Walker-side abilities with the same
+    surface syntax but declared inside a ``walker`` block do not count.
+    """
+
+    stripped = strip_comments(source)
+    for match in _NODE_HEAD_RE.finditer(stripped):
+        brace_idx = match.end() - 1
+        body = _block_at(stripped, brace_idx)
+        if _ABILITY_RE.search(body):
+            return True
+    return False
