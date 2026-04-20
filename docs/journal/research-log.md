@@ -81,3 +81,24 @@ All 10 solution.jac files validate clean, all 10 tests.jac pass 5/5. Baseline ca
 **Methodology invariants held.** Paired A/B purity maintained in every prompt (no Jac keyword leaks in any of the 10 `prompt.md` files). `validate_jac` round-trip executed on every solution. HELD OUT tasks (03, 10) marked `held_out: true` in meta.yaml. Calibration protocol (free-tier default, no rescue hints for 0/n baselines) followed throughout. Subagent-driven development with routing discipline enforced via `docs/plans/subagent-dispatch-template.md`.
 
 **What's next.** Phase 6: Tasks 26–31 implement 6 pattern-based AST idiom detectors (`uses_walker`, `uses_visit`, `uses_typed_edge_archetype`, `uses_connect_op`, `has_type_annotations`, `uses_abilities_on_nodes`) per the plan. Each is ~5–15 lines of regex over comment-stripped Jac source. Small, mechanical work — plan to dispatch as a batch to one subagent rather than six separate dispatches, to minimize overhead.
+
+---
+
+## 2026-04-20 — Phase 7 complete. Judge validated at κ = 0.500
+
+**State.** Tasks 32–35 landed.
+- **Task 32** — Prometheus-format judge prompt at `judge/prompt.md`. Explicit "penalize Python-transliterated patterns" instruction per design-recipe.md recommendation.
+- **Task 33** — `harness/judge.py` wraps GPT-OSS 120B via Groq (deliberately non-Anthropic, non-Google, non-Meta so no self-preference bias on any generator family). 3-run median via `judge_median()`. Exponential-backoff retries on Groq `APIConnectionError` / `RateLimitError` (added after the first validation run hit a transient DNS failure mid-corpus).
+- **Task 34** — 15 hand-labeled snippets at `judge/validation/snippets/01..15.jac`, 3 per tier (5/4/3/2/1). Every `hand_labels.jsonl` justification cites a specific `jac://` URI or `docs/findings/jac-pitfalls.md` entry.
+- **Task 35** — Cohen's κ in `harness/stats.py`. Validation runner at `scripts/validate_judge.py`.
+
+**Validation result: κ = 0.500** — moderate agreement per Landis–Koch, clears the 0.4 gate. Detailed per-snippet scores + run diagnostics in `judge/validation/run_log.md`.
+
+**One real bug caught**: the original `judge_once` parser defaulted `score = 1` whenever the `[RESULT] X` marker was missing, silently down-biasing 3-run medians. First κ run under that bug: **0.333 (below gate)**. Parser fix (prefer structured JSON `"score"` field before falling back to the marker) took us to 0.500 with **no rubric revisions needed**. The rubric_history.md log captures that the failure was in the parser, not the prompt — important for the writeup.
+
+**Methodology health.** Three design-recipe non-negotiables are now in place:
+1. Execution-based correctness (Phase 3 jac_runner — shipped).
+2. Hybrid AST + LLM judge idiomaticity (Phase 6 detectors + Phase 7 judge — shipped; 0.4 × AST + 0.6 × judge composition lands in Phase 8 scorer).
+3. **Judge validated against hand labels at κ ≥ 0.4** — done, κ = 0.500.
+
+**What's next.** Phase 8 (Tasks 36–37): scorer combines AST + judge into per-task idiomaticity, then the statistics module (unbiased pass@k via Chen, McNemar's on paired binary, paired bootstrap on ordinal, Wilson intervals — the full statistical backbone the design recipe calls for). Then Phase 9 (plan builder + orchestrator), then the actual eval run.
