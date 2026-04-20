@@ -1,0 +1,9 @@
+task_id: "08"
+bucket: walker
+created_at: 2026-04-20
+jac_constructs_expected:
+  - walker_archetype
+  - visit_statement
+  - disengage_statement
+baseline_pass_target: 0.2-0.8
+held_out: false
