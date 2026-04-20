@@ -78,8 +78,8 @@ Two deliverables are first-class, not one: a validated evaluation **methodology*
 
 - **10 hand-authored Jac tasks**, stratified 3 syntax/types / 3 graph-construction / 4 walker-traversal. The `by llm()` bucket is deferred (see below).
 - **4 context arms**: no-skill, Jaseci's LLMDocs-Mini, Jaseci's LLMDocs-Full, and this project's v0 SKILL.md.
-- **3 generator models**: Claude Haiku, Gemini 2.5 Pro (free tier), Llama 3.3 70B via Groq (free tier).
-- **Judge**: Gemini 2.5 Pro (non-Anthropic family), 3 runs per snippet, median. Single-judge for v0; dual-judge ensemble deferred to v1.
+- **3 generator models**: Claude Haiku 4.5, Gemini 3 Flash Preview (free tier), Llama 4 Scout 17B via Groq (free tier). Choices finalized 2026-04-19 after confirming Gemini 3 *Pro* Preview is not on free tier (429 quota).
+- **Judge**: `openai/gpt-oss-120b` via Groq (free tier). Deliberately NOT Anthropic, NOT Google, NOT Meta — so no self-preference bias against any of the three generator families. Single-judge for v0; dual-judge ensemble deferred to v1. 3 runs per snippet, median.
 - **Budget ceiling**: ≤ $5 total API spend. Design choices that would push past this are flagged, not assumed.
 - **Timeline**: 10–14 days.
 

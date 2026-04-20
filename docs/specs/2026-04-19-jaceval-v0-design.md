@@ -58,10 +58,12 @@ Noise-floor check: the `no-skill` arm is also run a second time with a different
 | Model | Access | Role |
 |---|---|---|
 | `claude-haiku-4-5` | Anthropic API (cheap paid, estimated ~$0.40 total) | Frontier-small Claude |
-| `gemini-2.5-pro` | Google AI Studio free tier | Frontier cross-family |
-| `llama-3.3-70b-versatile` | Groq free tier | Open-weights frontier-small |
+| `gemini-3-flash-preview` | Google AI Studio free tier | Frontier-small Google (current gen) |
+| `meta-llama/llama-4-scout-17b-16e-instruct` | Groq free tier | Open-weights MoE (current gen) |
 
-Rationale: three models spanning (Claude-family, Gemini-family, open-weights) so we can ask *"does context help weaker models more than stronger ones"* — the headline foundation-model framing.
+Rationale: three models spanning (Claude-family, Google-family, open-weights) so we can ask *"does context help weaker models more than stronger ones"* — the headline foundation-model framing.
+
+**Revision note (2026-04-19, before any eval ran):** original spec named `gemini-2.5-pro` and `llama-3.3-70b-versatile`. Confirmed via live API check that Gemini 3 Pro Preview is not on Google's free tier (429 `limit:0`), so generator slot moved to Gemini 3 Flash Preview. Open-weights slot upgraded from Llama 3.3 70B to current-generation Llama 4 Scout for consistency with "current-gen across the board." No results were produced under the earlier names; pre-registration integrity is intact.
 
 ### 5.3 Task set (ten tasks, stratified)
 
@@ -138,7 +140,7 @@ Detector subscore: fraction of detectors that return "yes" among those the task'
 
 **Stage 2 — LLM judge (60% weight)**
 
-- Judge model: Gemini 2.5 Pro (free tier; non-Anthropic family — avoids self-preference when judging Claude-generated code).
+- Judge model: `openai/gpt-oss-120b` via Groq (free tier). Deliberately non-Anthropic, non-Google, and non-Meta — so no self-preference bias when judging output from any of the three generator families. 120B params is large enough for structured rubric-grading tasks. Originally specified as Gemini 2.5 Pro; changed 2026-04-19 (before any eval ran) for the same free-tier reason as the generator change and to eliminate Gemini self-preference when judging Gemini generations.
 - Prompt format: Prometheus-style (Kim et al. ICLR 2024). System block contains the task's `rubric.md` and the reference `solution.jac`. User block contains the generated code. Instruction explicitly:
   - Lists which idiomatic Jac constructs appear in the candidate first, citing line numbers.
   - Evaluates each rubric item.
@@ -220,9 +222,10 @@ Any claimed effect must also **exceed the noise-floor and irrelevant-context con
                                ▼                       ▼         ▼
                     ┌──────────────────┐    ┌──────────────────┐ ┌─────────────┐
                     │ AST detectors    │    │ LLM judge        │ │ Audit log   │
-                    │ (via jac-mcp)    │    │ (Gemini 2.5 Pro, │ │ (JSONL,     │
-                    │                  │    │  3-run median)   │ │  one per    │
-                    └─────────┬────────┘    └────────┬─────────┘ │  sample)    │
+                    │ (via jac-mcp)    │    │ (GPT-OSS 120B    │ │ (JSONL,     │
+                    │                  │    │  via Groq,       │ │  one per    │
+                    │                  │    │  3-run median)   │ │  sample)    │
+                    └─────────┬────────┘    └────────┬─────────┘ │             │
                               │                      │            └─────────────┘
                               └──────────┬───────────┘
                                          ▼
@@ -315,10 +318,10 @@ Scope gate checks: at end of Day 5, if fewer than 10 tasks pass calibration, dro
 
 | Line item | Estimate |
 |---|---|
-| Claude Haiku generation (900 gens × ~2K in + 500 out) | ~$0.40 |
-| Gemini 2.5 Pro generation (free tier) | $0.00 |
-| Llama 3.3 70B via Groq (free tier) | $0.00 |
-| Gemini 2.5 Pro judge (2,700 judgments, free tier) | $0.00 |
+| Claude Haiku 4.5 generation (900 gens × ~2K in + 500 out) | ~$0.40 |
+| Gemini 3 Flash Preview generation (free tier) | $0.00 |
+| Llama 4 Scout 17B via Groq (free tier) | $0.00 |
+| GPT-OSS 120B via Groq judge (2,700 judgments, free tier) | $0.00 |
 | Dev-loop iteration overhead (~2× above) | ~$0.80 |
 | **Total projected** | **~$1.20** |
 | Hard ceiling | $5.00 |

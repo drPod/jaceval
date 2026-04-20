@@ -43,11 +43,12 @@ def test_claude_live_roundtrip():
 
 @pytest.mark.skipif(not os.getenv("GOOGLE_API_KEY"), reason="no Google key")
 def test_gemini_live_roundtrip():
-    g = generate(model="gemini-2.5-pro", prompt="Reply with exactly the word: ok", temperature=0.0, max_tokens=8, seed=0)
+    # Gemini Flash uses internal "thoughts" tokens; need enough max_tokens to leave room for visible output.
+    g = generate(model="gemini-3-flash-preview", prompt="Reply with exactly the word: ok", temperature=0.0, max_tokens=256, seed=0)
     assert "ok" in g.completion.lower()
 
 
 @pytest.mark.skipif(not os.getenv("GROQ_API_KEY"), reason="no Groq key")
 def test_groq_live_roundtrip():
-    g = generate(model="llama-3.3-70b-versatile", prompt="Reply with exactly the word: ok", temperature=0.0, max_tokens=8, seed=0)
+    g = generate(model="meta-llama/llama-4-scout-17b-16e-instruct", prompt="Reply with exactly the word: ok", temperature=0.0, max_tokens=8, seed=0)
     assert "ok" in g.completion.lower()

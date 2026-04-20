@@ -5,7 +5,7 @@ import time
 from dataclasses import dataclass
 from typing import Literal
 
-ModelName = Literal["claude-haiku-4-5", "gemini-2.5-pro", "llama-3.3-70b-versatile"]
+ModelName = Literal["claude-haiku-4-5", "gemini-3-flash-preview", "meta-llama/llama-4-scout-17b-16e-instruct"]
 
 
 @dataclass
@@ -27,9 +27,9 @@ def generate(
 ) -> Generation:
     if model == "claude-haiku-4-5":
         return _call_claude(prompt, temperature, max_tokens, seed)
-    elif model == "gemini-2.5-pro":
+    elif model == "gemini-3-flash-preview":
         return _call_gemini(prompt, temperature, max_tokens, seed)
-    elif model == "llama-3.3-70b-versatile":
+    elif model == "meta-llama/llama-4-scout-17b-16e-instruct":
         return _call_groq(prompt, temperature, max_tokens, seed)
     else:
         raise ValueError(f"unknown model: {model}")
@@ -67,7 +67,7 @@ def _call_gemini(prompt: str, temperature: float, max_tokens: int, seed: int) ->
     client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
     start = time.monotonic()
     resp = client.models.generate_content(
-        model="gemini-2.5-pro",
+        model="gemini-3-flash-preview",
         contents=prompt,
         config=types.GenerateContentConfig(
             temperature=temperature,
@@ -79,7 +79,7 @@ def _call_gemini(prompt: str, temperature: float, max_tokens: int, seed: int) ->
     text = resp.text or ""
     usage = resp.usage_metadata
     return Generation(
-        model="gemini-2.5-pro",
+        model="gemini-3-flash-preview",
         completion=text,
         finish_reason=(resp.candidates[0].finish_reason.name if resp.candidates else "stop"),
         input_tokens=(usage.prompt_token_count if usage else 0),
@@ -95,7 +95,7 @@ def _call_groq(prompt: str, temperature: float, max_tokens: int, seed: int) -> G
     client = Groq(api_key=os.environ["GROQ_API_KEY"])
     start = time.monotonic()
     resp = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="meta-llama/llama-4-scout-17b-16e-instruct",
         temperature=temperature,
         max_tokens=max_tokens,
         seed=seed,
@@ -104,7 +104,7 @@ def _call_groq(prompt: str, temperature: float, max_tokens: int, seed: int) -> G
     wall_ms = int((time.monotonic() - start) * 1000)
     choice = resp.choices[0]
     return Generation(
-        model="llama-3.3-70b-versatile",
+        model="meta-llama/llama-4-scout-17b-16e-instruct",
         completion=choice.message.content or "",
         finish_reason=choice.finish_reason or "stop",
         input_tokens=resp.usage.prompt_tokens,

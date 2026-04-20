@@ -4,7 +4,7 @@
 
 **Goal:** Build and execute the v0 `jaceval` harness — a paired A/B benchmark measuring whether context docs improve LLM-generated Jac quality, over 10 tasks × 5 arms × 3 models × 5 samples, with a validated LLM judge.
 
-**Architecture:** Python 3.12 harness that subprocesses `jac run` for correctness and calls three LLM APIs (Claude Haiku, Gemini 2.5 Pro, Groq Llama 3.3 70B) for generation and Gemini 2.5 Pro for judgment. Intermediate state flows through append-only JSONL files for resumability. Jac-specific authoring is delegated to Claude via the local `jac-mcp` server (already wired in `.mcp.json`).
+**Architecture:** Python 3.12 harness that subprocesses `jac run` for correctness and calls three LLM APIs (Claude Haiku 4.5, Gemini 3 Flash Preview, Llama 4 Scout 17B via Groq) for generation and GPT-OSS 120B via Groq for judgment. Intermediate state flows through append-only JSONL files for resumability. Jac-specific authoring is delegated to Claude via the local `jac-mcp` server (already wired in `.mcp.json`).
 
 **Tech Stack:** Python 3.12 (pyenv), `pip install -e .` with pyproject.toml, pytest for unit tests, `jac` CLI for running Jac code, `jac-mcp` tools for Jac authoring assistance, official API SDKs (`anthropic`, `google-genai`, `groq`), `numpy` for bootstrap, `scipy.stats` for McNemar and Wilson intervals, PyYAML for task metadata, `python-dotenv` for API keys.
 
@@ -47,7 +47,7 @@ jaceval/
 │   ├── generators.py                 # unified LLM client interface
 │   ├── jac_runner.py                 # subprocess jac run + parse
 │   ├── detectors.py                  # AST idiom detectors (pattern-based)
-│   ├── judge.py                      # Gemini judge + 3-run median
+│   ├── judge.py                      # GPT-OSS 120B via Groq judge + 3-run median
 │   ├── scorer.py                     # AST + judge → idiom_score
 │   ├── stats.py                      # McNemar, paired bootstrap, Wilson, Cohen's κ
 │   ├── plan_builder.py               # writes run_plan.jsonl
@@ -605,7 +605,7 @@ import time
 from dataclasses import dataclass
 from typing import Literal
 
-ModelName = Literal["claude-haiku-4-5", "gemini-2.5-pro", "llama-3.3-70b-versatile"]
+ModelName = Literal["claude-haiku-4-5", "gemini-3-flash-preview", "meta-llama/llama-4-scout-17b-16e-instruct"]
 
 @dataclass
 class Generation:
@@ -625,9 +625,9 @@ def generate(
 ) -> Generation:
     if model == "claude-haiku-4-5":
         return _call_claude(prompt, temperature, max_tokens, seed)
-    elif model == "gemini-2.5-pro":
+    elif model == "gemini-3-flash-preview":
         return _call_gemini(prompt, temperature, max_tokens, seed)
-    elif model == "llama-3.3-70b-versatile":
+    elif model == "meta-llama/llama-4-scout-17b-16e-instruct":
         return _call_groq(prompt, temperature, max_tokens, seed)
     else:
         raise ValueError(f"unknown model: {model}")
@@ -740,7 +740,7 @@ git commit -m "feat(generators): claude haiku client with live smoke test"
 # tests/test_generators.py (append)
 @pytest.mark.skipif(not os.getenv("GOOGLE_API_KEY"), reason="no Google key")
 def test_gemini_live_roundtrip():
-    g = generate(model="gemini-2.5-pro", prompt="Reply with exactly the word: ok", temperature=0.0, max_tokens=8, seed=0)
+    g = generate(model="gemini-3-flash-preview", prompt="Reply with exactly the word: ok", temperature=0.0, max_tokens=8, seed=0)
     assert "ok" in g.completion.lower()
 ```
 
@@ -756,7 +756,7 @@ def _call_gemini(prompt: str, temperature: float, max_tokens: int, seed: int) ->
     client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
     start = time.monotonic()
     resp = client.models.generate_content(
-        model="gemini-2.5-pro",
+        model="gemini-3-flash-preview",
         contents=prompt,
         config=types.GenerateContentConfig(
             temperature=temperature,
@@ -768,7 +768,7 @@ def _call_gemini(prompt: str, temperature: float, max_tokens: int, seed: int) ->
     text = resp.text or ""
     usage = resp.usage_metadata
     return Generation(
-        model="gemini-2.5-pro",
+        model="gemini-3-flash-preview",
         completion=text,
         finish_reason=(resp.candidates[0].finish_reason.name if resp.candidates else "stop"),
         input_tokens=(usage.prompt_token_count if usage else 0),
@@ -800,7 +800,7 @@ git commit -m "feat(generators): gemini 2.5 pro client"
 # tests/test_generators.py (append)
 @pytest.mark.skipif(not os.getenv("GROQ_API_KEY"), reason="no Groq key")
 def test_groq_live_roundtrip():
-    g = generate(model="llama-3.3-70b-versatile", prompt="Reply with exactly the word: ok", temperature=0.0, max_tokens=8, seed=0)
+    g = generate(model="meta-llama/llama-4-scout-17b-16e-instruct", prompt="Reply with exactly the word: ok", temperature=0.0, max_tokens=8, seed=0)
     assert "ok" in g.completion.lower()
 ```
 
@@ -815,7 +815,7 @@ def _call_groq(prompt: str, temperature: float, max_tokens: int, seed: int) -> G
     client = Groq(api_key=os.environ["GROQ_API_KEY"])
     start = time.monotonic()
     resp = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="meta-llama/llama-4-scout-17b-16e-instruct",
         temperature=temperature,
         max_tokens=max_tokens,
         seed=seed,
@@ -824,7 +824,7 @@ def _call_groq(prompt: str, temperature: float, max_tokens: int, seed: int) -> G
     wall_ms = int((time.monotonic() - start) * 1000)
     choice = resp.choices[0]
     return Generation(
-        model="llama-3.3-70b-versatile",
+        model="meta-llama/llama-4-scout-17b-16e-instruct",
         completion=choice.message.content or "",
         finish_reason=choice.finish_reason or "stop",
         input_tokens=resp.usage.prompt_tokens,
@@ -1412,7 +1412,7 @@ from dotenv import load_dotenv
 load_dotenv()
 from harness.judge import judge_once, judge_median
 
-@pytest.mark.skipif(not os.getenv("GOOGLE_API_KEY"), reason="no Google key")
+@pytest.mark.skipif(not os.getenv("GROQ_API_KEY"), reason="no Groq key")
 def test_judge_once_returns_int_score():
     task_rubric = "Uses walker for traversal. Score 1-5."
     reference = "walker foo { has count: int = 0; }"
@@ -1421,7 +1421,7 @@ def test_judge_once_returns_int_score():
     assert 1 <= r["score"] <= 5
     assert "feedback" in r
 
-@pytest.mark.skipif(not os.getenv("GOOGLE_API_KEY"), reason="no Google key")
+@pytest.mark.skipif(not os.getenv("GROQ_API_KEY"), reason="no Groq key")
 def test_judge_median_runs_three():
     task_rubric = "Uses walker. Score 1-5."
     reference = "walker foo { }"
@@ -1441,11 +1441,31 @@ from __future__ import annotations
 import json, os, re, time
 from pathlib import Path
 from statistics import median
-from harness.generators import _call_gemini
 
 PROMPT_TEMPLATE = Path("judge/prompt.md").read_text()
 _RESULT_RE = re.compile(r"\[RESULT\]\s*([1-5])")
 _JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
+
+JUDGE_MODEL = "openai/gpt-oss-120b"  # via Groq; see spec §6.2
+
+def _call_judge(prompt: str, *, temperature: float = 0.3, max_tokens: int = 1024, seed: int = 0) -> str:
+    """Call the judge model via Groq SDK and return the completion text.
+
+    GPT-OSS 120B via Groq is deliberately non-Anthropic, non-Google, and non-Meta
+    so no self-preference bias against any of the three generator families.
+    """
+    from dotenv import load_dotenv
+    load_dotenv()
+    from groq import Groq
+    client = Groq(api_key=os.environ["GROQ_API_KEY"])
+    resp = client.chat.completions.create(
+        model=JUDGE_MODEL,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        seed=seed,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return resp.choices[0].message.content or ""
 
 def judge_once(*, task_rubric: str, reference_solution: str, candidate_code: str) -> dict:
     prompt = PROMPT_TEMPLATE.format(
@@ -1453,8 +1473,7 @@ def judge_once(*, task_rubric: str, reference_solution: str, candidate_code: str
         reference_solution=reference_solution,
         candidate_code=candidate_code,
     )
-    gen = _call_gemini(prompt=prompt, temperature=0.3, max_tokens=1024, seed=int(time.time() * 1000) % 10_000)
-    text = gen.completion
+    text = _call_judge(prompt=prompt, temperature=0.3, max_tokens=1024, seed=int(time.time() * 1000) % 10_000)
     m = _RESULT_RE.search(text)
     score = int(m.group(1)) if m else 1
     jm = _JSON_RE.search(text)
@@ -1481,7 +1500,7 @@ def judge_median(*, task_rubric: str, reference_solution: str, candidate_code: s
 
 ```bash
 git add harness/judge.py tests/test_judge.py
-git commit -m "feat(judge): gemini 2.5 pro judge with 3-run median"
+git commit -m "feat(judge): gpt-oss-120b via groq judge with 3-run median"
 ```
 
 ---
@@ -1795,7 +1814,7 @@ from harness.plan_builder import build_plan
 
 def test_build_plan_yields_full_cross_product(tmp_path):
     arms = ["no-skill", "llmdocs-mini"]
-    models = ["claude-haiku-4-5", "gemini-2.5-pro"]
+    models = ["claude-haiku-4-5", "gemini-3-flash-preview"]
     tasks = ["01", "02"]
     plan = list(build_plan(arms=arms, models=models, task_ids=tasks, n_samples=3, seed_base=0))
     assert len(plan) == 2*2*2*3
@@ -1956,7 +1975,7 @@ def main():
     ap.add_argument("--limit", type=int, default=None, help="run only first N entries")
     ap.add_argument("--build-plan", action="store_true", help="if given, (re)build plan from defaults and exit")
     ap.add_argument("--arms", nargs="+", default=["no-skill", "llmdocs-mini", "llmdocs-full"])
-    ap.add_argument("--models", nargs="+", default=["claude-haiku-4-5", "gemini-2.5-pro", "llama-3.3-70b-versatile"])
+    ap.add_argument("--models", nargs="+", default=["claude-haiku-4-5", "gemini-3-flash-preview", "meta-llama/llama-4-scout-17b-16e-instruct"])
     ap.add_argument("--tasks", nargs="+", default=[f"{i:02d}" for i in range(1, 11)])
     ap.add_argument("--n-samples", type=int, default=5)
     ap.add_argument("--noise-floor", action="store_true")
@@ -2018,7 +2037,7 @@ git commit -m "feat(run): orchestrator reads plan, executes, appends JSONL"
 ```bash
 .venv/bin/python -m harness.run --build-plan \
   --arms no-skill llmdocs-mini llmdocs-full \
-  --models claude-haiku-4-5 gemini-2.5-pro llama-3.3-70b-versatile \
+  --models claude-haiku-4-5 gemini-3-flash-preview meta-llama/llama-4-scout-17b-16e-instruct \
   --tasks 01 02 03 04 05 06 07 08 09 10 \
   --n-samples 5 \
   --noise-floor
@@ -2267,7 +2286,7 @@ git commit -m "feat(arms): Gleam SKILL.md as length-matched irrelevant-context c
 .venv/bin/python -c "
 from harness.plan_builder import build_plan
 import json
-new_entries = list(build_plan(arms=['v0-skill', 'irrelevant-ctrl'], models=['claude-haiku-4-5', 'gemini-2.5-pro', 'llama-3.3-70b-versatile'], task_ids=[f'{i:02d}' for i in range(1,11)], n_samples=5, seed_base=0))
+new_entries = list(build_plan(arms=['v0-skill', 'irrelevant-ctrl'], models=['claude-haiku-4-5', 'gemini-3-flash-preview', 'meta-llama/llama-4-scout-17b-16e-instruct'], task_ids=[f'{i:02d}' for i in range(1,11)], n_samples=5, seed_base=0))
 with open('.eval_cache/run_plan.jsonl', 'a') as f:
     for e in new_entries: f.write(json.dumps(e)+'\n')
 print(f'appended {len(new_entries)} entries')
@@ -2352,7 +2371,7 @@ for (arm, model), rs in sorted(group_by([r for r in rows if is_dev(r)], "arm", "
 # --- Paired deltas: (skill_arm vs no-skill) per model, with bootstrap CI
 print("\n## Paired deltas (dev set only)\n")
 for skill_arm in ["llmdocs-mini", "llmdocs-full", "v0-skill", "irrelevant-ctrl"]:
-    for model in ["claude-haiku-4-5", "gemini-2.5-pro", "llama-3.3-70b-versatile"]:
+    for model in ["claude-haiku-4-5", "gemini-3-flash-preview", "meta-llama/llama-4-scout-17b-16e-instruct"]:
         a_rows = [r for r in rows if is_dev(r) and r["entry"]["arm"] == skill_arm and r["entry"]["model"] == model]
         b_rows = [r for r in rows if is_dev(r) and r["entry"]["arm"] == "no-skill" and r["entry"]["model"] == model and r["entry"].get("group", "main") == "main"]
         # pair by task_id + sample_idx
