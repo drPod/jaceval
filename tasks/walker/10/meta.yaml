@@ -1,0 +1,9 @@
+task_id: "10"
+bucket: walker
+created_at: 2026-04-20
+jac_constructs_expected:
+  - walker_archetype
+  - visit_statement
+  - typed_walker_state
+baseline_pass_target: 0.2-0.8
+held_out: true    # HELD OUT — do not look at scores during iteration
