@@ -58,8 +58,11 @@ def judge_once(*, task_rubric: str, reference_solution: str, candidate_code: str
     )
     actual_seed = seed if seed is not None else int(time.time() * 1000) % 10_000
     text = _call_judge(prompt=prompt, temperature=0.3, max_tokens=1024, seed=actual_seed)
-    m = _RESULT_RE.search(text)
-    score = int(m.group(1)) if m else 1
+
+    # Try JSON first (structured), then [RESULT] marker, then fall back to 1.
+    # Earlier versions defaulted to 1 whenever the marker was missing, which
+    # silently biased scores down when the model emitted valid JSON but a
+    # malformed trailing marker.
     jm = _JSON_RE.search(text)
     parsed: dict = {}
     if jm:
@@ -67,6 +70,20 @@ def judge_once(*, task_rubric: str, reference_solution: str, candidate_code: str
             parsed = json.loads(jm.group(0))
         except Exception:
             parsed = {}
+
+    score: int | None = None
+    raw_json_score = parsed.get("score")
+    if isinstance(raw_json_score, int) and 1 <= raw_json_score <= 5:
+        score = raw_json_score
+
+    if score is None:
+        m = _RESULT_RE.search(text)
+        if m:
+            score = int(m.group(1))
+
+    if score is None:
+        score = 1
+
     return {
         "score": score,
         "feedback": parsed.get("feedback", text[:200]),
