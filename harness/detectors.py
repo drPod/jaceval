@@ -113,3 +113,28 @@ def uses_abilities_on_nodes(source: str) -> bool:
         if _ABILITY_RE.search(body):
             return True
     return False
+
+
+DETECTORS = {
+    "uses_walker": uses_walker,
+    "uses_visit": uses_visit,
+    "uses_typed_edge_archetype": uses_typed_edge_archetype,
+    "uses_connect_op": uses_connect_op,
+    "has_type_annotations": has_type_annotations,
+    "uses_abilities_on_nodes": uses_abilities_on_nodes,
+}
+
+
+def run_all(source: str, expected: list[str] | None = None) -> dict:
+    """Run every detector. If ``expected`` is given, ``ast_subscore`` is the mean over
+    those detectors only; otherwise it's the mean over all of them. Unknown names in
+    ``expected`` are ignored.
+    """
+
+    results = {name: fn(source) for name, fn in DETECTORS.items()}
+    if expected:
+        applicable = [results[name] for name in expected if name in results]
+    else:
+        applicable = list(results.values())
+    subscore = (sum(applicable) / len(applicable)) if applicable else 0.0
+    return {"per_detector": results, "ast_subscore": subscore}
