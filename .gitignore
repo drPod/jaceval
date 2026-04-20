@@ -32,6 +32,7 @@ env/
 # Jac build artifacts
 __jac_gen__/
 *.jac.py
+.jac/
 
 # Editors / OS
 .DS_Store
