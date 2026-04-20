@@ -32,3 +32,10 @@ def uses_walker(source: str) -> bool:
 
     stripped = strip_comments(source)
     return re.search(r"\bwalker\s+\w+", stripped) is not None
+
+
+def uses_visit(source: str) -> bool:
+    """Return True if source contains a ``visit`` statement."""
+
+    stripped = strip_comments(source)
+    return re.search(r"\bvisit\b", stripped) is not None
