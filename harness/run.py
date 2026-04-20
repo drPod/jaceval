@@ -105,7 +105,7 @@ def load_arm(name: str) -> str:
     return (Path("arms") / name / "arm.md").read_text()
 
 
-def run_one(entry: dict) -> dict:
+def run_one(entry: dict, *, skip_judge: bool = False) -> dict:
     task = load_task(entry["task_id"])
     arm_text = load_arm(entry["arm"])
     prompt = build_prompt(arm=arm_text, task=task["prompt"])
@@ -128,17 +128,10 @@ def run_one(entry: dict) -> dict:
 
     ast_out = run_all(completion, expected=task["meta"].get("jac_constructs_expected"))
 
-    jo = judge_median(
-        task_rubric=task["rubric"],
-        reference_solution=task["solution"],
-        candidate_code=judge_input,
-    )
-
-    score = idiom_score(ast_subscore=ast_out["ast_subscore"], judge_median=jo["median"])
-
-    return {
+    record: dict[str, Any] = {
         "entry": entry,
         "completion": completion,
+        "judge_input": judge_input,
         "generation_usage": {
             "input": gen.input_tokens,
             "output": gen.output_tokens,
@@ -149,14 +142,59 @@ def run_one(entry: dict) -> dict:
         "exit_code": test_result.raw.exit_code,
         "test_stdout": test_result.raw.stdout[-2000:],
         "ast": ast_out,
-        "judge": {
+        "ts": time.time(),
+    }
+
+    if skip_judge:
+        record["judge"] = None
+        record["idiom_score"] = None
+        return record
+
+    try:
+        jo = judge_median(
+            task_rubric=task["rubric"],
+            reference_solution=task["solution"],
+            candidate_code=judge_input,
+        )
+        record["judge"] = {
             "median": jo["median"],
             "scores": jo["scores"],
             "feedback": [r["feedback"] for r in jo["runs"]],
-        },
-        "idiom_score": score,
-        "ts": time.time(),
+        }
+        record["idiom_score"] = idiom_score(
+            ast_subscore=ast_out["ast_subscore"], judge_median=jo["median"]
+        )
+    except Exception as ex:
+        # Judge failure must NOT lose the generation + test + AST work already
+        # done. Persist the partial record and let `--judge-only` fill in the
+        # judge result on a later run (after quota reset or judge swap).
+        record["judge"] = {"error": repr(ex)}
+        record["idiom_score"] = None
+
+    return record
+
+
+def rejudge_one(record: dict) -> dict:
+    """Re-run the judge on a partial record that has completion + test + AST
+    but no idiom score. Returns a new record with judge + idiom_score filled in.
+    """
+    task = load_task(record["entry"]["task_id"])
+    jo = judge_median(
+        task_rubric=task["rubric"],
+        reference_solution=task["solution"],
+        candidate_code=record["judge_input"],
+    )
+    new = dict(record)
+    new["judge"] = {
+        "median": jo["median"],
+        "scores": jo["scores"],
+        "feedback": [r["feedback"] for r in jo["runs"]],
     }
+    new["idiom_score"] = idiom_score(
+        ast_subscore=record["ast"]["ast_subscore"], judge_median=jo["median"]
+    )
+    new["ts_judge"] = time.time()
+    return new
 
 
 def _key(entry: dict) -> tuple:
@@ -188,6 +226,19 @@ def main() -> None:
     ap.add_argument("--tasks", nargs="+", default=[f"{i:02d}" for i in range(1, 11)])
     ap.add_argument("--n-samples", type=int, default=5)
     ap.add_argument("--noise-floor", action="store_true")
+    ap.add_argument(
+        "--skip-judge",
+        action="store_true",
+        help="run generator + tests + AST only; leave judge/idiom_score null "
+             "so they can be filled in later by --judge-only (useful when the "
+             "judge provider has a daily quota cap).",
+    )
+    ap.add_argument(
+        "--judge-only",
+        action="store_true",
+        help="re-read results JSONL, and for every record whose idiom_score is "
+             "null, run judge + scorer and append an updated record.",
+    )
     args = ap.parse_args()
 
     if args.build_plan:
@@ -203,6 +254,34 @@ def main() -> None:
         print(f"wrote plan: {args.plan}")
         return
 
+    if args.judge_only:
+        existing = read_jsonl(args.out)
+        needs = [r for r in existing if r.get("idiom_score") is None]
+        print(f"records={len(existing)} need_judge={len(needs)}")
+        if args.limit:
+            needs = needs[: args.limit]
+        # Stream in place: rewrite the out file with updated records,
+        # preserving original order for deterministic downstream analysis.
+        key_to_update: dict[tuple, dict] = {}
+        for i, r in enumerate(needs, 1):
+            try:
+                new = rejudge_one(r)
+                key_to_update[_key(r["entry"])] = new
+                print(
+                    f"[{i}/{len(needs)}] judged {r['entry']['arm']:18s} "
+                    f"{r['entry']['task_id']:8s} sample={r['entry']['sample_idx']} "
+                    f"idiom={new['idiom_score']:.2f}"
+                )
+            except Exception as ex:
+                print(f"[{i}/{len(needs)}] JUDGE ERROR: {r['entry']} :: {ex}")
+                append_jsonl(CACHE / "errors.jsonl", {"entry": r["entry"], "error": repr(ex)})
+        # Rewrite the output file with merged records.
+        merged = [key_to_update.get(_key(r["entry"]), r) for r in existing]
+        with args.out.open("w") as f:
+            for r in merged:
+                f.write(json.dumps(r) + "\n")
+        return
+
     plan = read_jsonl(args.plan)
     done = {_key(r["entry"]) for r in read_jsonl(args.out)}
     todo = [e for e in plan if _key(e) not in done]
@@ -212,12 +291,14 @@ def main() -> None:
 
     for i, e in enumerate(todo, 1):
         try:
-            out = run_one(e)
+            out = run_one(e, skip_judge=args.skip_judge)
             append_jsonl(args.out, out)
+            idiom = out.get("idiom_score")
+            idiom_s = f"{idiom:.2f}" if isinstance(idiom, float) else "—"
             print(
                 f"[{i}/{len(todo)}] {e['arm']:18s} {e['model']:40s} "
                 f"{e['task_id']:8s} sample={e['sample_idx']} "
-                f"passed={out['passed']} idiom={out['idiom_score']:.2f}"
+                f"passed={out['passed']} idiom={idiom_s}"
             )
         except Exception as ex:
             print(f"[{i}/{len(todo)}] ERROR: {e} :: {ex}")
