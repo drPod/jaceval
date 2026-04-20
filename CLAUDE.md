@@ -119,13 +119,23 @@ Write as a peer proposing a research artifact, not as a student submitting homew
 
 ### Repo layout
 
-- `tasks/<bucket>/<task-id>/` — one directory per task with `prompt.md`, `solution.jac`, `tests.jac`, `rubric.md`.
-- `arms/` — the four context documents.
-- `harness/` — runner, scorer, orchestration (prefer Inspect AI).
+**Code and data:**
+- `tasks/<bucket>/<task-id>/` — one directory per task with `prompt.md`, `solution.jac`, `tests.jac`, `rubric.md`, `meta.yaml`.
+- `arms/` — the four context documents (`no-skill`, `llmdocs`, `v0-skill`, `irrelevant-ctrl`).
+- `harness/` — runner, scorer, orchestration.
 - `detectors/` — AST idiom detectors (prefer `jac-mcp` over rolling our own tree-sitter).
-- `judge/` — prompts, validation harness, hand-label corpus.
+- `judge/` — judge prompt template, validation harness, hand-label corpus.
 - `results/` — raw JSONL + `RESULTS.md` writeup.
-- `docs/specs/` — design specs.
-- `design-recipe.md` — the literature review that underpins this project.
-- `docs/research-problems.md` — append-only log of research-process problems encountered during implementation (calibration tensions, methodology trade-offs, prompt-design traps). Record each problem, the decision made, and what to watch for downstream. Consult before making non-obvious methodology calls.
-- `docs/jac-pitfalls-discovered.md` — running log of concrete Jac syntax/semantics gotchas found while authoring the v0 task set. A first-class research artifact — evidence for the SKILL.md and a candidate upstream bug-report list for Jaseci's documentation. Whenever you discover a new Jac pitfall (doc-vs-runtime discrepancy, parse trap, API surprise), write it to **BOTH** this file AND the session memory at `~/.claude/projects/-Users-darshpoddar-Coding-jaceval/memory/ref_jac_pitfalls.md`. The repo copy is the research artifact; the memory copy is fast-path context for future subagents.
+- `scripts/` — standalone scripts (calibration, analysis, judge validation).
+- `tests/` — pytest unit tests for harness components.
+- `design-recipe.md` (repo root) — the literature review that underpins this project.
+
+**`docs/` is organized by purpose — check the right bucket before adding a new doc:**
+
+- `docs/specs/` — frozen design specs. Do not modify once pre-registered; append a dated revision doc instead.
+- `docs/plans/` — implementation plans with task checklists. Authoritative for what the project is building and in what order.
+- `docs/findings/` — empirical research artifacts: things we learned about the subject matter (Jac) while building the eval. First-class research output, cited in the paper/Mars note.
+    - `docs/findings/jac-pitfalls.md` — running log of concrete Jac syntax/semantics gotchas. Evidence for the SKILL.md and a candidate upstream bug-report list for Jaseci's docs. Whenever you discover a new pitfall (doc-vs-runtime discrepancy, parse trap, API surprise), write it to **BOTH** this file AND the session memory at `~/.claude/projects/-Users-darshpoddar-Coding-jaceval/memory/ref_jac_pitfalls.md`. Repo copy is the research artifact; memory copy is fast-path context for future subagents.
+- `docs/journal/` — running process log: what happened while building, what we decided, why.
+    - `docs/journal/research-log.md` — append-only entries on calibration tensions, methodology trade-offs, scope reframings, budget pressure. Consult before making non-obvious methodology calls. Each entry: what happened → what we decided → what to watch for downstream.
+- `docs/deliverables/` — outward-facing artifacts written near the end: Mars note, paper draft, public README prose. Empty for now; do not create files here until the work they depend on has landed.
