@@ -53,3 +53,32 @@ def uses_connect_op(source: str) -> bool:
 
     stripped = strip_comments(source)
     return re.search(r"\+\+>|<\+\+>", stripped) is not None
+
+
+_HAS_DECL_RE = re.compile(r"\bhas\s+\w+([^;\n=]*)")
+_DEF_SIG_RE = re.compile(r"\bdef\s+\w+\s*\(([^)]*)\)([^{]*)\{", re.DOTALL)
+
+
+def has_type_annotations(source: str) -> bool:
+    """Return True iff every ``has`` field, every ``def`` param, and every ``def``
+    return type carries an explicit annotation. Vacuously True when no applicable
+    construct appears.
+    """
+
+    stripped = strip_comments(source)
+
+    for tail in _HAS_DECL_RE.findall(stripped):
+        if ":" not in tail:
+            return False
+
+    for params, between in _DEF_SIG_RE.findall(stripped):
+        params = params.strip()
+        if params:
+            for raw in params.split(","):
+                p = raw.strip()
+                if p and ":" not in p:
+                    return False
+        if "->" not in between:
+            return False
+
+    return True
