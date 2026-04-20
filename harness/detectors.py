@@ -39,3 +39,10 @@ def uses_visit(source: str) -> bool:
 
     stripped = strip_comments(source)
     return re.search(r"\bvisit\b", stripped) is not None
+
+
+def uses_typed_edge_archetype(source: str) -> bool:
+    """Return True if source declares at least one edge archetype."""
+
+    stripped = strip_comments(source)
+    return re.search(r"\bedge\s+\w+", stripped) is not None
