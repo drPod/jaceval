@@ -1,0 +1,8 @@
+task_id: "03"
+bucket: syntax
+created_at: 2026-04-20
+jac_constructs_expected:
+  - filter_comprehension
+  - has_type_annotations
+baseline_pass_target: 0.2-0.8
+held_out: true    # HELD OUT — do not look at scores during iteration
