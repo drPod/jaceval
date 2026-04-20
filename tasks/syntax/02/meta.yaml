@@ -1,0 +1,9 @@
+task_id: "02"
+bucket: syntax
+created_at: 2026-04-20
+jac_constructs_expected:
+  - obj_archetype
+  - has_type_annotations
+  - method_on_archetype
+baseline_pass_target: 0.2-0.8
+held_out: false
