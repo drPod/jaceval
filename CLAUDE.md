@@ -107,6 +107,32 @@ Authoring and grading Jac in this project is done by Claude via `jac-mcp`, ancho
 
 When grading idiomaticity, label decisions must cite specific rules from `jac://guide/pitfalls` or `jac://guide/patterns` to be defensible. *"This looks Python-ish"* is not a label; *"this violates pitfall X from jac://guide/pitfalls"* is.
 
+### Documentation discipline — non-negotiable
+
+The project produces two first-class research outputs alongside code: a
+running log of concrete Jac pitfalls (`docs/findings/jac-pitfalls.md`) and a
+journal of process/methodology decisions (`docs/journal/research-log.md`).
+Both are evidence that will appear in the Mars writeup and any eventual
+paper. Keeping them current is as important as keeping tests green.
+
+**Every subagent report must include:**
+- a **Findings** section naming any new Jac pitfalls discovered (wrong form → right form + URI or runtime probe output), and
+- a **Journal** section naming any process/methodology issues encountered.
+
+Empty sections are fine — silent omission is not. The canonical prompt
+boilerplate that enforces this lives at `docs/plans/subagent-dispatch-template.md`.
+Every subagent dispatch uses it; drift from the template is the failure mode
+to guard against.
+
+**The controller (Claude in the main conversation) is responsible for routing**:
+- Jac pitfalls → append to `docs/findings/jac-pitfalls.md` AND the session memory at `~/.claude/projects/-Users-darshpoddar-Coding-jaceval/memory/ref_jac_pitfalls.md`. Both copies must stay in sync.
+- Process/methodology issues → append to `docs/journal/research-log.md` with a dated header.
+- Routing lands as a separate `docs(...)` commit so task commits stay focused.
+
+Self-check before marking a task complete: grep the subagent's report for
+`pitfall`, `gotcha`, `finding`, `journal`. If any match was not routed, route
+it now. Forgetting to route is the bug this discipline is designed to catch.
+
 ### `by llm()` — why it's deferred to v1
 
 Jac has a language-level primitive for LLM-backed functions. `def summarize(text: str) -> str by llm();` declares a function whose body *is* a prompt to a model: at call time the LLM receives the signature, any `sem` (semantic) annotations, and call context, and produces a typed return value. This generalizes Mars's OOPSLA 2025 MTP paper into the language and is Jac's primary differentiator vs. Python.
