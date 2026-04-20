@@ -1,0 +1,197 @@
+# Jac pitfalls discovered during jaceval v0
+
+Running log of concrete Jac syntax and semantics gotchas found while authoring
+the v0 task set. This is a **research artifact** — evidence for what a SKILL.md
+must cover, and a candidate upstream bug-report list for Jaseci's documentation.
+Each entry names the canonical wrong form, the correct form, and — where the
+authoritative docs are ambiguous or misleading — the URI of the `jac-mcp`
+resource whose prose conflicts with observed runtime behavior.
+
+Mirrored from Claude's session memory (`ref_jac_pitfalls.md`). Both files are
+maintained by every subagent authoring Jac in this repo.
+
+---
+
+## Statements and control flow
+
+### `pass` is not a Jac statement
+
+```jac
+// INVALID
+while True { pass; }
+
+// VALID — idiomatic no-op inside a loop body
+while True { continue; }
+```
+
+Discovered while writing a timeout-test fixture (Task 4, 2026-04-19). Caught by
+`jac-mcp validate_jac`. Python intuition fails here.
+
+---
+
+## Test blocks
+
+Native Jac test syntax — no `def`, no function wrapper:
+
+```jac
+test "describes the test" {
+    assert expr, "message";
+}
+```
+
+Assertions require a trailing semicolon (Python-style predicate, Jac-style
+statement terminator).
+
+### `jac test` output format (Jac 0.13.5 / jaclang 0.14.0)
+
+- Test summary is written to **stderr**, not stdout.
+- Test runner is Python's `unittest` underneath.
+- Passing summary (stderr): `Ran N test(s) in T.TTTs\n\nOK`
+- Failing summary (stderr): `Ran N tests in T.TTTs\n\nFAILED (failures=N)` plus a per-failure block above it.
+- stdout on passing test = `"Passed successfully.\n"`. stdout on failing test = `""`.
+
+Robust parse for pass/fail in Python — combine stdout+stderr and match:
+
+```python
+import re
+TOTAL   = re.compile(r"Ran\s+(\d+)\s+tests?", re.IGNORECASE)
+FAILED  = re.compile(r"FAILED\s*\(failures=(\d+)\)", re.IGNORECASE)
+# all_passed ⇔ failures == 0 AND exit_code == 0
+```
+
+---
+
+## Object and archetype syntax
+
+- Fields are declared with `has`: `obj Foo { has a: int; has b: int; }` — type annotations required.
+- Methods: `def method() -> T { return expr; }` — **no implicit `self`** in the parameter list (unlike Python).
+
+---
+
+## Cross-file imports and `validate_jac` false positives
+
+### Same-directory import form
+
+```jac
+import from solution { fib, Item, build_graph }
+```
+
+Plain module name. No path. No `.solution` dot prefix.
+
+### The "Module not found" warning is a static-analysis false positive
+
+`validate_jac` runs without working-directory context, so it cannot resolve
+sibling files. Any `import from solution { ... }` in a `tests.jac` will emit a
+**warning** (not error). This is a false positive — `jac test` and `jac run`
+resolve sibling files correctly at runtime. Only `errors[]` entries from
+`validate_jac` are blocking; ignore this class of warning.
+
+### Cascade errors in test files
+
+Because the imported symbol is unresolved at static-analysis time, its return
+type becomes `<Unknown>`. Downstream uses of the imported function cascade into
+false-positive errors like:
+
+> `Cannot assign <Unknown> to parameter 'obj' of type Sized`
+
+These appear wherever the test file passes the imported function's result to a
+typed parameter (`len(x)`, etc.). All such errors are non-blocking — the
+runtime resolves the real types. Ignore any `<Unknown>`-rooted error in a test
+file that imports from a sibling `solution.jac`.
+
+---
+
+## Graph (OSP) semantics: misleading doc vs. runtime
+
+### "Bidirectional" connect is NOT symmetric storage
+
+Both `a <++> b` and `a <+: Type(...) :+> b` create a **single directed edge
+`a → b`** at runtime — not two edges, not an undirected edge. The prose in
+`jac://docs/osp` § Edges calls `<++>` "creates edges both ways," which is
+wrong with respect to storage semantics.
+
+Symmetry at query time comes from **traversal filters**, not from the connect
+operator:
+
+- `[a <-->]` returns neighbors reachable via edges incident to `a` in either direction.
+- `[a -->]` follows outbound edges only. `[b -->]` where only `a <++> b` exists returns `[]`.
+
+**Consequence.** Any task requiring mutual/symmetric neighbor queries must use
+`[<-->]` / `[<--]` filters. The connect operator itself doesn't encode symmetry.
+
+**Doc-bug candidate.** `jac://docs/osp` § Edges should clarify that
+bidirectional connect is a **query-time** affordance, not a storage-layer one.
+
+### Typed-edge traversal filter syntax
+
+The typed form is `->:Type:->` (and `<-:Type:<-` for incoming). **Do not mix
+with `-->`** — `[edge src -->:Road:->]` is a parse error. The untyped form is
+`-->` alone; the typed form drops to `->:Type:->` with single dashes.
+
+Negative cases — all parse errors:
+
+```jac
+[edge src -->:Road:->]      // WRONG: double-dash with type
+[src <-:Road:->]            // WRONG: no such bidirectional typed form
+[src <-:Road:-]             // WRONG: no such incoming typed filter
+```
+
+Correct forms:
+
+```jac
+[src ->:Road:->]            // typed outgoing target nodes
+[edge src ->:Road:->]       // typed outgoing edge objects
+[src <-:Road:<-]            // typed incoming target nodes
+[edge src <-:Road:<-]       // typed incoming edge objects
+[edge src <-->][?:Road]     // bidirectional: untyped edge filter + type refinement
+```
+
+### Edges have no first-class `source` / `target` accessor
+
+`e.source`, `e.target`, `e.from_node`, `e.to_node` — none are exposed at the
+Jac language level. The idiomatic way to find a specific edge from `src` to a
+named `dst` is **index-aligned tandem iteration** of:
+
+- `[src ->:Type:->]` — target nodes
+- `[edge src ->:Type:->]` — edge objects
+
+The two lists are equal-length and same-order at runtime. Walk both and pick
+by comparing the target node:
+
+```jac
+let targets = [src ->:Road:->];
+let edges = [edge src ->:Road:->];
+for i in range(len(targets)) {
+    if targets[i] == dst {
+        edges[i].distance = new_distance;
+    }
+}
+```
+
+### Edge mutation persistence
+
+Assigning to a `has` field on an edge object retrieved via any filter form
+persists in the graph store. No explicit `save()` / `commit()` needed inside a
+`with entry` block or a walker ability. Re-querying with typed or untyped
+filters returns the updated value.
+
+### Spatial assign comprehension on edges (bulk-mutation idiom)
+
+```jac
+[edge src -->][?:Road](=distance=220.0)
+```
+
+mutates **all matching edges** in place. Companion to the "filter + index +
+assign" loop pattern — use bulk form when the mutation applies to every
+matching edge; use the loop pattern when only one specific edge should change.
+
+---
+
+## Meta rule
+
+Never trust training-data Jac syntax. Python intuition silently fails in many
+places. Always round-trip through `jac-mcp`'s `validate_jac` before committing
+any Jac snippet. For semantics-level questions the docs don't clarify, run a
+minimal probe with `jac run` and verify observed behavior. Cite specific
+`jac://guide/pitfalls` or `jac://guide/patterns` URIs when documenting a rule;
+cite runtime probe output when documenting a doc-vs-runtime discrepancy.
