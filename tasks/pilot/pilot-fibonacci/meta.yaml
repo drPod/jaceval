@@ -1,0 +1,5 @@
+task_id: pilot-fibonacci
+bucket: pilot
+created_at: 2026-04-19
+jac_constructs_expected: [type_annotations]
+baseline_pass_target: skip
