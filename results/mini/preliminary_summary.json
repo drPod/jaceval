@@ -1,0 +1,248 @@
+{
+  "n_rows": 100,
+  "cut_1_per_arm": {
+    "irrelevant-ctrl": {
+      "n": 10,
+      "pass_rate": 0.0,
+      "pass_wilson_95": [
+        0.0,
+        0.2775401687666165
+      ],
+      "idiom_mean": null,
+      "idiom_median": null,
+      "n_scored_idiom": 0
+    },
+    "llmdocs": {
+      "n": 30,
+      "pass_rate": 0.4,
+      "pass_wilson_95": [
+        0.24590394326083403,
+        0.5767994750172616
+      ],
+      "idiom_mean": null,
+      "idiom_median": null,
+      "n_scored_idiom": 0
+    },
+    "no-skill": {
+      "n": 30,
+      "pass_rate": 0.0,
+      "pass_wilson_95": [
+        0.0,
+        0.113517091390478
+      ],
+      "idiom_mean": null,
+      "idiom_median": null,
+      "n_scored_idiom": 0
+    },
+    "v0-skill": {
+      "n": 30,
+      "pass_rate": 0.5666666666666667,
+      "pass_wilson_95": [
+        0.3919700954540873,
+        0.7262276256938489
+      ],
+      "idiom_mean": null,
+      "idiom_median": null,
+      "n_scored_idiom": 0
+    }
+  },
+  "cut_2_v0skill_vs_llmdocs": {
+    "arm_a": "v0-skill",
+    "arm_b": "llmdocs",
+    "flip_table": {
+      "v0-skill_only": 7,
+      "llmdocs_only": 2,
+      "both_pass": 10,
+      "both_fail": 11
+    },
+    "mcnemar_p_two_sided": 0.1796875,
+    "idiom_mean_delta": null,
+    "idiom_bootstrap_95ci": [
+      0.0,
+      0.0
+    ],
+    "n_tasks_with_idiom": 0,
+    "per_task": [
+      {
+        "task_id": "01",
+        "bucket": "syntax",
+        "v0-skill_pass_rate": 1.0,
+        "llmdocs_pass_rate": 1.0,
+        "v0-skill_idiom": null,
+        "llmdocs_idiom": null,
+        "idiom_delta": null
+      },
+      {
+        "task_id": "02",
+        "bucket": "syntax",
+        "v0-skill_pass_rate": 1.0,
+        "llmdocs_pass_rate": 0.0,
+        "v0-skill_idiom": null,
+        "llmdocs_idiom": null,
+        "idiom_delta": null
+      },
+      {
+        "task_id": "03",
+        "bucket": "syntax",
+        "v0-skill_pass_rate": 1.0,
+        "llmdocs_pass_rate": 1.0,
+        "v0-skill_idiom": null,
+        "llmdocs_idiom": null,
+        "idiom_delta": null
+      },
+      {
+        "task_id": "04",
+        "bucket": "graph",
+        "v0-skill_pass_rate": 0.6666666666666666,
+        "llmdocs_pass_rate": 0.6666666666666666,
+        "v0-skill_idiom": null,
+        "llmdocs_idiom": null,
+        "idiom_delta": null
+      },
+      {
+        "task_id": "05",
+        "bucket": "graph",
+        "v0-skill_pass_rate": 0.6666666666666666,
+        "llmdocs_pass_rate": 1.0,
+        "v0-skill_idiom": null,
+        "llmdocs_idiom": null,
+        "idiom_delta": null
+      },
+      {
+        "task_id": "06",
+        "bucket": "graph",
+        "v0-skill_pass_rate": 1.0,
+        "llmdocs_pass_rate": 0.0,
+        "v0-skill_idiom": null,
+        "llmdocs_idiom": null,
+        "idiom_delta": null
+      },
+      {
+        "task_id": "07",
+        "bucket": "walker",
+        "v0-skill_pass_rate": 0.3333333333333333,
+        "llmdocs_pass_rate": 0.3333333333333333,
+        "v0-skill_idiom": null,
+        "llmdocs_idiom": null,
+        "idiom_delta": null
+      },
+      {
+        "task_id": "08",
+        "bucket": "walker",
+        "v0-skill_pass_rate": 0.0,
+        "llmdocs_pass_rate": 0.0,
+        "v0-skill_idiom": null,
+        "llmdocs_idiom": null,
+        "idiom_delta": null
+      },
+      {
+        "task_id": "09",
+        "bucket": "walker",
+        "v0-skill_pass_rate": 0.0,
+        "llmdocs_pass_rate": 0.0,
+        "v0-skill_idiom": null,
+        "llmdocs_idiom": null,
+        "idiom_delta": null
+      },
+      {
+        "task_id": "10",
+        "bucket": "walker",
+        "v0-skill_pass_rate": 0.0,
+        "llmdocs_pass_rate": 0.0,
+        "v0-skill_idiom": null,
+        "llmdocs_idiom": null,
+        "idiom_delta": null
+      }
+    ]
+  },
+  "cut_3_per_construct": {
+    "irrelevant-ctrl": {
+      "uses_walker": 0.0,
+      "uses_visit": 0.0,
+      "uses_typed_edge_archetype": 0.0,
+      "uses_connect_op": 0.0,
+      "has_type_annotations": 0.9,
+      "uses_abilities_on_nodes": 0.0
+    },
+    "llmdocs": {
+      "uses_walker": 0.26666666666666666,
+      "uses_visit": 0.26666666666666666,
+      "uses_typed_edge_archetype": 0.4,
+      "uses_connect_op": 0.03333333333333333,
+      "has_type_annotations": 0.6,
+      "uses_abilities_on_nodes": 0.0
+    },
+    "no-skill": {
+      "uses_walker": 0.0,
+      "uses_visit": 0.0,
+      "uses_typed_edge_archetype": 0.0,
+      "uses_connect_op": 0.0,
+      "has_type_annotations": 0.8,
+      "uses_abilities_on_nodes": 0.0
+    },
+    "v0-skill": {
+      "uses_walker": 0.2,
+      "uses_visit": 0.2,
+      "uses_typed_edge_archetype": 0.4,
+      "uses_connect_op": 0.0,
+      "has_type_annotations": 0.7,
+      "uses_abilities_on_nodes": 0.0
+    }
+  },
+  "cut_4_dissociation": {},
+  "cut_5_v0skill_vs_irrelevant": {
+    "arm_a": "v0-skill",
+    "arm_b": "irrelevant-ctrl",
+    "flip_table": {
+      "v0-skill_only": 10,
+      "irrelevant-ctrl_only": 0,
+      "both_pass": 0,
+      "both_fail": 0
+    },
+    "mcnemar_p_two_sided": 0.001953125,
+    "idiom_mean_delta": null,
+    "idiom_bootstrap_95ci": [
+      0.0,
+      0.0
+    ],
+    "n_tasks_with_idiom": 0,
+    "per_task": [
+      {
+        "task_id": "01",
+        "bucket": "syntax",
+        "v0-skill_pass_rate": 1.0,
+        "irrelevant-ctrl_pass_rate": 0.0,
+        "v0-skill_idiom": null,
+        "irrelevant-ctrl_idiom": null,
+        "idiom_delta": null
+      },
+      {
+        "task_id": "02",
+        "bucket": "syntax",
+        "v0-skill_pass_rate": 1.0,
+        "irrelevant-ctrl_pass_rate": 0.0,
+        "v0-skill_idiom": null,
+        "irrelevant-ctrl_idiom": null,
+        "idiom_delta": null
+      },
+      {
+        "task_id": "03",
+        "bucket": "syntax",
+        "v0-skill_pass_rate": 1.0,
+        "irrelevant-ctrl_pass_rate": 0.0,
+        "v0-skill_idiom": null,
+        "irrelevant-ctrl_idiom": null,
+        "idiom_delta": null
+      },
+      {
+        "task_id": "04",
+        "bucket": "graph",
+        "v0-skill_pass_rate": 0.6666666666666666,
+        "irrelevant-ctrl_pass_rate": 0.0,
+        "v0-skill_idiom": null,
+        "irrelevant-ctrl_idiom": null,
+        "idiom_delta": null
+      }
+    ]
+  }
+}

@@ -77,24 +77,32 @@ def bucket_of(task_id: str, rows: list[dict]) -> str:
 
 
 def cut_1_per_arm_summary(grouped: dict) -> dict:
-    """Cut 1: pass rate and mean idiomaticity per arm, plus Wilson 95% CI on pass."""
+    """Cut 1: pass rate and mean idiomaticity per arm, plus Wilson 95% CI on pass.
+
+    Records with ``idiom_score is None`` (judge phase not yet run) are
+    included in the pass-rate tally and excluded from the idiomaticity stats;
+    idiomaticity fields read ``null`` in that arm's block.
+    """
     per_arm: dict = {}
     by_arm_pass: dict[str, list[bool]] = defaultdict(list)
     by_arm_idiom: dict[str, list[float]] = defaultdict(list)
     for (arm, _task), rs in grouped.items():
         for r in rs:
             by_arm_pass[arm].append(bool(r["passed"]))
-            by_arm_idiom[arm].append(float(r["idiom_score"]))
+            if r.get("idiom_score") is not None:
+                by_arm_idiom[arm].append(float(r["idiom_score"]))
     for arm in sorted(by_arm_pass):
         passes = sum(by_arm_pass[arm])
         total = len(by_arm_pass[arm])
         lo, hi = wilson_interval(successes=passes, trials=total)
+        idioms = by_arm_idiom[arm]
         per_arm[arm] = {
             "n": total,
             "pass_rate": passes / total if total else 0.0,
             "pass_wilson_95": [lo, hi],
-            "idiom_mean": mean(by_arm_idiom[arm]) if by_arm_idiom[arm] else 0.0,
-            "idiom_median": median(by_arm_idiom[arm]) if by_arm_idiom[arm] else 0.0,
+            "idiom_mean": mean(idioms) if idioms else None,
+            "idiom_median": median(idioms) if idioms else None,
+            "n_scored_idiom": len(idioms),
         }
     return per_arm
 
@@ -129,27 +137,39 @@ def _paired_arm_vs_arm(grouped: dict, arm_a: str, arm_b: str) -> dict:
             else:
                 tie_fail += 1
         # Per-task mean idiomaticity, one float per task for paired bootstrap.
-        idiom_a_per_task.append(mean(r["idiom_score"] for r in rs_a))
-        idiom_b_per_task.append(mean(r["idiom_score"] for r in rs_b))
-        per_task.append({
+        # Only include tasks where BOTH arms have judge scores on every sample.
+        a_scores = [r.get("idiom_score") for r in rs_a]
+        b_scores = [r.get("idiom_score") for r in rs_b]
+        task_entry: dict = {
             "task_id": t,
             "bucket": bucket_of(t, rs_a),
             f"{arm_a}_pass_rate": sum(r["passed"] for r in rs_a) / len(rs_a),
             f"{arm_b}_pass_rate": sum(r["passed"] for r in rs_b) / len(rs_b),
-            f"{arm_a}_idiom": idiom_a_per_task[-1],
-            f"{arm_b}_idiom": idiom_b_per_task[-1],
-            "idiom_delta": idiom_a_per_task[-1] - idiom_b_per_task[-1],
-        })
+        }
+        if None not in a_scores and None not in b_scores:
+            idiom_a_per_task.append(mean(a_scores))
+            idiom_b_per_task.append(mean(b_scores))
+            task_entry[f"{arm_a}_idiom"] = idiom_a_per_task[-1]
+            task_entry[f"{arm_b}_idiom"] = idiom_b_per_task[-1]
+            task_entry["idiom_delta"] = idiom_a_per_task[-1] - idiom_b_per_task[-1]
+        else:
+            task_entry[f"{arm_a}_idiom"] = None
+            task_entry[f"{arm_b}_idiom"] = None
+            task_entry["idiom_delta"] = None
+        per_task.append(task_entry)
 
     mcnemar_p = mcnemar_exact(a_wins=a_wins, b_wins=b_wins)
     if len(idiom_a_per_task) > 1:
         ci_lo, ci_hi = paired_bootstrap_mean(
             idiom_a_per_task, idiom_b_per_task, n_boot=10_000, seed=0
         )
-        mean_delta = mean(a - b for a, b in zip(idiom_a_per_task, idiom_b_per_task))
+        mean_delta: float | None = mean(a - b for a, b in zip(idiom_a_per_task, idiom_b_per_task))
+    elif len(idiom_a_per_task) == 1:
+        ci_lo = ci_hi = 0.0
+        mean_delta = idiom_a_per_task[0] - idiom_b_per_task[0]
     else:
         ci_lo = ci_hi = 0.0
-        mean_delta = (idiom_a_per_task[0] - idiom_b_per_task[0]) if idiom_a_per_task else 0.0
+        mean_delta = None
 
     return {
         "arm_a": arm_a,
@@ -163,6 +183,7 @@ def _paired_arm_vs_arm(grouped: dict, arm_a: str, arm_b: str) -> dict:
         "mcnemar_p_two_sided": mcnemar_p,
         "idiom_mean_delta": mean_delta,
         "idiom_bootstrap_95ci": [ci_lo, ci_hi],
+        "n_tasks_with_idiom": len(idiom_a_per_task),
         "per_task": per_task,
     }
 
@@ -196,12 +217,18 @@ def cut_3_per_construct(grouped: dict) -> dict:
 
 
 def cut_4_correctness_vs_idiom_dissociation(grouped: dict) -> dict:
-    """Cut 4: contingency of (passed, high_idiom) per arm. High idiom = >0.6."""
+    """Cut 4: contingency of (passed, high_idiom) per arm. High idiom = >0.6.
+
+    Records without idiom_score (judge pass not yet run) are skipped entirely —
+    cut 4 is idiomaticity-dependent by construction.
+    """
     by_arm: dict[str, dict[str, int]] = defaultdict(
         lambda: {"pass_hi": 0, "pass_lo": 0, "fail_hi": 0, "fail_lo": 0}
     )
     for (arm, _task), rs in grouped.items():
         for r in rs:
+            if r.get("idiom_score") is None:
+                continue
             p = bool(r["passed"])
             hi = r["idiom_score"] > HIGH_IDIOM_THRESHOLD
             key = ("pass" if p else "fail") + ("_hi" if hi else "_lo")
@@ -233,11 +260,13 @@ def render_cut_1(per_arm: dict) -> str:
     lines.append(f"{'arm':20s}  {'n':>4s}  {'pass':>8s}  {'95% CI':>16s}  {'idiom_mean':>11s}")
     for arm, v in per_arm.items():
         lo, hi = v["pass_wilson_95"]
+        im = v["idiom_mean"]
+        idiom_s = f"{im:>11.3f}" if im is not None else f"{'—':>11s}"
         lines.append(
             f"{arm:20s}  {v['n']:>4d}  "
             f"{v['pass_rate']:>7.0%}  "
             f"[{lo:>5.2f},{hi:>5.2f}]  "
-            f"{v['idiom_mean']:>11.3f}"
+            f"{idiom_s}"
         )
     return "\n".join(lines)
 
@@ -251,17 +280,21 @@ def render_cut_2(cut2: dict | None) -> str:
                  f"llmdocs_only={f['llmdocs_only']}  "
                  f"both_pass={f['both_pass']}  both_fail={f['both_fail']}")
     lines.append(f"  McNemar two-sided p = {cut2['mcnemar_p_two_sided']:.4f}")
-    ci = cut2["idiom_bootstrap_95ci"]
-    lines.append(
-        f"  mean Δ idiomaticity (v0-skill − llmdocs) = {cut2['idiom_mean_delta']:+.3f}  "
-        f"95% paired-bootstrap CI = [{ci[0]:+.3f}, {ci[1]:+.3f}]"
-    )
-    if ci[0] > 0:
-        lines.append("  ⇒ CI excludes 0 strictly positive: v0-skill significantly > llmdocs on idiomaticity.")
-    elif ci[1] < 0:
-        lines.append("  ⇒ CI excludes 0 strictly negative: llmdocs significantly > v0-skill on idiomaticity.")
+    if cut2.get("idiom_mean_delta") is None:
+        lines.append("  idiomaticity Δ: PENDING — judge phase not yet run on these rows.")
     else:
-        lines.append("  ⇒ CI spans 0: no significant difference on idiomaticity at this N.")
+        ci = cut2["idiom_bootstrap_95ci"]
+        lines.append(
+            f"  mean Δ idiomaticity (v0-skill − llmdocs) = {cut2['idiom_mean_delta']:+.3f}  "
+            f"95% paired-bootstrap CI = [{ci[0]:+.3f}, {ci[1]:+.3f}]  "
+            f"(n_tasks={cut2['n_tasks_with_idiom']})"
+        )
+        if ci[0] > 0:
+            lines.append("  ⇒ CI excludes 0 strictly positive: v0-skill significantly > llmdocs on idiomaticity.")
+        elif ci[1] < 0:
+            lines.append("  ⇒ CI excludes 0 strictly negative: llmdocs significantly > v0-skill on idiomaticity.")
+        else:
+            lines.append("  ⇒ CI spans 0: no significant difference on idiomaticity at this N.")
     return "\n".join(lines)
 
 
@@ -302,17 +335,21 @@ def render_cut_5(cut5: dict | None) -> str:
                  f"irrelevant-ctrl_only={f['irrelevant-ctrl_only']}  "
                  f"both_pass={f['both_pass']}  both_fail={f['both_fail']}")
     lines.append(f"  McNemar two-sided p = {cut5['mcnemar_p_two_sided']:.4f}")
-    ci = cut5["idiom_bootstrap_95ci"]
-    lines.append(
-        f"  mean Δ idiomaticity (v0-skill − irrelevant-ctrl) = {cut5['idiom_mean_delta']:+.3f}  "
-        f"95% paired-bootstrap CI = [{ci[0]:+.3f}, {ci[1]:+.3f}]"
-    )
-    if ci[0] > 0:
-        lines.append("  ⇒ Jac-content matters: irrelevant-ctrl does NOT explain the v0-skill lift.")
-    elif ci[1] < 0:
-        lines.append("  ⇒ Uh-oh: irrelevant-ctrl outperforms v0-skill. Investigate.")
+    if cut5.get("idiom_mean_delta") is None:
+        lines.append("  idiomaticity Δ: PENDING — judge phase not yet run.")
     else:
-        lines.append("  ⇒ CI spans 0: can't rule out 'more tokens' as the mechanism at this N.")
+        ci = cut5["idiom_bootstrap_95ci"]
+        lines.append(
+            f"  mean Δ idiomaticity (v0-skill − irrelevant-ctrl) = {cut5['idiom_mean_delta']:+.3f}  "
+            f"95% paired-bootstrap CI = [{ci[0]:+.3f}, {ci[1]:+.3f}]  "
+            f"(n_tasks={cut5['n_tasks_with_idiom']})"
+        )
+        if ci[0] > 0:
+            lines.append("  ⇒ Jac-content matters: irrelevant-ctrl does NOT explain the v0-skill lift.")
+        elif ci[1] < 0:
+            lines.append("  ⇒ Uh-oh: irrelevant-ctrl outperforms v0-skill. Investigate.")
+        else:
+            lines.append("  ⇒ CI spans 0: can't rule out 'more tokens' as the mechanism at this N.")
     return "\n".join(lines)
 
 
