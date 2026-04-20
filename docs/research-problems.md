@@ -32,3 +32,21 @@ Append-only log of problems encountered during jaceval v0. Each entry: what happ
 Not a Haiku-specific weakness — it is a **floor across all free-tier frontier-ish models we have access to**. This settles the "weak model?" question from the first postmortem: no, the syntax probes genuinely cannot be solved by current LLMs without some Jac-specific context. Strong pre-registered prediction: the SKILL.md and LLMDocs arms will show discrete non-zero lift on these tasks; the lift itself, not the absolute rate, is the measurement.
 
 **Calibration protocol revision.** The spec's `baseline_pass_target: 0.2-0.8` heuristic is inappropriate for a language-education eval where baseline is expected to be at floor. Treat the aggregate baseline pass rate as *informational* — keep tasks at 0/10 if the SKILL.md arm is expected to lift them. The discrimination check that actually matters is running the SKILL.md arm and observing any non-zero lift; if SKILL.md ALSO produces 0/n, the task is genuinely too hard and should be dropped. This check happens at Task 44, not at calibration time.
+
+---
+
+## 2026-04-20 — Scope reframing: bounty → publishable methodology
+
+**Context.** The original Mars conversation was casual ("a few hours a week / or set it up as a bounty") and his follow-up mentioned planning "a competition on methodologies for building the best harness for educating foundation models." Initial reading: v0 is a bounty-scope prototype, rigor should follow.
+
+**Reframe.** Mars is a professor with a publication track record on Jac (OOPSLA 2025, OSP arXiv, SemTexts, MTP). A methodology-as-competition-entry frame naturally wants a publishable-quality artifact, not a throwaway prototype. Correct internal posture: **build v0 as the pilot slice of what could be scaled into a conference/workshop paper**. Keep the full rigor of `design-recipe.md` — paired A/B, execution-based correctness, hybrid AST+judge, Prometheus format, pre-committed thresholds, irrelevant-ctrl and no-op noise-floor controls, bootstrap CIs, McNemar — and don't downscope to "just a demo."
+
+**What does NOT change for v0 scope.** Still 10 tasks, still 15 hand-labeled judge snippets, still 3 generators × 4 arms × 5 samples. v0 ships what the plan says it ships. v1 is where task-count and judge-corpus scale for full statistical power.
+
+**What DOES change is the internal framing.**
+- RESULTS.md leads with methodology contribution, not Δ numbers. "Here is a reusable harness for measuring whether context docs lift LLM performance on a niche language; Jac is the v0 target; here is what we found."
+- README.md positioned for outside researchers, not just Mars. Quickstart must work on free-tier creds.
+- Generalization hooks in harness (task schema, detectors, judge rubric, translator) treated as first-class design goals. v0 Jac must be the first-of-N instantiations, not an inseparable monolith.
+- Write-up discipline: effect-size threshold pre-committed before looking at results, irrelevant-ctrl + noise-floor controls run, judge κ reported with CI — all non-negotiable for paper-readiness.
+
+**What to watch for downstream.** Avoid scope creep that bloats v0 beyond the plan's 51 tasks, but also avoid shortcuts in the harness abstractions that would make v1 scaling painful. The methodology is the deliverable; cutting corners on the methodology is the mistake to guard against.
