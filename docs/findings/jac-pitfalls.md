@@ -299,6 +299,34 @@ rm -rf .jac* jac.lock __jac_gen__ && jac run probe.jac
 
 ---
 
+## Comment syntax
+
+### Bare `root` is deprecated — use `root()`
+
+```jac
+root ++> node;     # WARNING (deprecated): Bare 'root' is deprecated. Use 'root()' instead.
+root() ++> node;   # current idiomatic form
+```
+
+`validate_jac` emits this as a warning rather than an error (non-blocking at runtime), but the deprecation is explicit. Prefer `root()` in all authored solutions.
+
+### Jac uses `#` line comments and `#* ... *#` block comments — NOT `//` or `/* */`
+
+```jac
+# line comment — correct
+
+#*
+block comment — correct
+*#
+
+// WRONG — parse error
+/* WRONG — parse error */
+```
+
+Several LLM-generated Jac samples reach for C/JavaScript-style comments (`//`, `/* */`) and fail to parse. This project's own implementation plan (pre-Phase-6) inherited the same error, documented `strip_comments` with `//` and `/* */` regexes, and had to be corrected during detector authoring (2026-04-20). Confirmed via `validate_jac`: `#` / `#* *#` are the only valid forms.
+
+---
+
 ## Meta rule
 
 Never trust training-data Jac syntax. Python intuition silently fails in many
