@@ -36,7 +36,27 @@ def generate(
 
 
 def _call_claude(prompt: str, temperature: float, max_tokens: int, seed: int) -> Generation:
-    raise NotImplementedError("implemented in Task 8")
+    from dotenv import load_dotenv
+    load_dotenv()
+    from anthropic import Anthropic
+    client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    start = time.monotonic()
+    resp = client.messages.create(
+        model="claude-haiku-4-5",
+        max_tokens=max_tokens,
+        temperature=temperature,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    wall_ms = int((time.monotonic() - start) * 1000)
+    completion = "".join(b.text for b in resp.content if b.type == "text")
+    return Generation(
+        model="claude-haiku-4-5",
+        completion=completion,
+        finish_reason=resp.stop_reason or "stop",
+        input_tokens=resp.usage.input_tokens,
+        output_tokens=resp.usage.output_tokens,
+        wall_ms=wall_ms,
+    )
 
 
 def _call_gemini(prompt: str, temperature: float, max_tokens: int, seed: int) -> Generation:
