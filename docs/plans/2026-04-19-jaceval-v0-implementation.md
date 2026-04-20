@@ -350,10 +350,12 @@ git commit -m "feat(runner): run_jac_file with timeout and RunResult"
 // tests/fixtures/forever.jac
 with entry {
     while True {
-        pass;
+        continue;
     }
 }
 ```
+
+**Note:** Jac does not have a `pass` statement; use `continue;` as the in-loop no-op. This was discovered during the first execution of Task 4 via `jac-mcp validate_jac`.
 
 Verify via `jac-mcp` `validate_jac` that it compiles (expect no compile errors — it's an infinite loop, not a syntax error).
 
