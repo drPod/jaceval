@@ -105,22 +105,61 @@ file that imports from a sibling `solution.jac`.
 
 ### "Bidirectional" connect is NOT symmetric storage
 
-Both `a <++> b` and `a <+: Type(...) :+> b` create a **single directed edge
-`a → b`** at runtime — not two edges, not an undirected edge. The prose in
-`jac://docs/osp` § Edges calls `<++>` "creates edges both ways," which is
-wrong with respect to storage semantics.
+`<++>` has never created two edges in any version of jaclang. The runtime
+behavior changed between 0.14.0 and `main`, but the "creates edges both ways"
+doc wording was never accurate on either side.
 
-Symmetry at query time comes from **traversal filters**, not from the connect
-operator:
+**jaclang ≤0.14.0 (all PyPI releases as of 2026-04-21):** `a <++> b` stores
+a **single directed edge `a → b`**. `[b -->]` returns `[]`. Symmetry is a
+query-time affordance via `[<-->]` only.
+
+**jaclang `main` post-#5575 (merged 2026-04-17 at commit `c0496f79`, not yet
+released — `git tag --contains c0496f79` returns empty):** `<++>` stores a
+**single edge with `is_undirected=True`**. Traversal from either endpoint
+via `[-->]` now returns the edge (`[b -->]` → `[<N>]`). Still one edge, now
+marked undirected.
+
+**Docs (both main and every release) describe neither behavior correctly:**
+"Bidirectional / creates edges both ways" implies two-edge storage. No
+version of jaclang has ever stored two edges for `<++>`.
+
+Symmetry at query time, in either runtime regime, comes from **traversal
+filters**:
 
 - `[a <-->]` returns neighbors reachable via edges incident to `a` in either direction.
-- `[a -->]` follows outbound edges only. `[b -->]` where only `a <++> b` exists returns `[]`.
+- Pre-#5575: `[a -->]` follows outbound edges only; `[b -->]` after `a <++> b` returns `[]`.
+- Post-#5575: `[a -->]` and `[b -->]` both return the edge, because `is_undirected` bypasses the source/target check.
 
-**Consequence.** Any task requiring mutual/symmetric neighbor queries must use
-`[<-->]` / `[<--]` filters. The connect operator itself doesn't encode symmetry.
+**Consequence for v0 eval (harness pinned on 0.14.0 as of 2026-04-21).**
+Any task requiring mutual/symmetric neighbor queries must use `[<-->]` /
+`[<--]` filters. The connect operator doesn't encode symmetry on the pinned
+version. If the harness ever bumps to a post-#5575 release, this pitfall
+entry — and any task rubric that relies on `<++>` not being traversable
+from the right endpoint — needs re-check.
 
-**Doc-bug candidate.** `jac://docs/osp` § Edges should clarify that
-bidirectional connect is a **query-time** affordance, not a storage-layer one.
+**Upstream provenance (verified 2026-04-21).** `jac-llmdocs.md` is
+auto-generated from upstream `jaseci-labs/jaseci` at `docs/docs/**.md` via an
+LLM-assembly pipeline; the "Bidirectional" label is inherited verbatim from
+three upstream files rather than shaped by `jaseci-llmdocs/config/rag_rules.txt`
+(the rag rules never mention `<++>`). Locations of the wrong wording:
+
+- `docs/docs/quick-guide/syntax-cheatsheet.md` — `a <++> b; # Bidirectional a <-> b`
+- `docs/docs/reference/language/osp.md` § Edges.3 — `a <++> b; # Undirected: a ↔ b (creates edges both ways)` (strongest claim — plural "edges")
+- `docs/docs/reference/language/foundation.md` § Graph Operators — `node1 <++> node2; # Bidirectional`
+- `docs/docs/reference/language/osp.md` § Graph Construction.2 — `alice <+: Colleague(department="Engineering") :+> bob;` labeled "Bidirectional typed" (same framing applied to the typed form)
+
+**Internal inconsistency in upstream osp.md.** The same `osp.md` that claims
+`<++>` "creates edges both ways" in § Edges.3 treats `[<-->]` as a query-time
+direction-agnostic traversal in § Walkers.3 (`visit [<-->]; # Visit both
+directions`) and § Data Spatial Queries.1 (`both = [<-->]; # Both directions`).
+The fix aligns § Edges.3 with the framing the rest of the doc already uses.
+PR target is upstream `jaseci-labs/jaseci`, not `jaseci-llmdocs` (the
+generated artifact gets overwritten on every pipeline run).
+
+**Upstream PR to fix:** [jaseci-labs/jaseci#5665](https://github.com/jaseci-labs/jaseci/pull/5665).
+After review pushback noting that #5575 lands on `main`, the replacement
+wording was revised on 2026-04-22 to describe post-#5575 single-undirected-edge
+storage rather than pre-fix single-directed-edge storage.
 
 ### Typed-edge traversal filter syntax
 

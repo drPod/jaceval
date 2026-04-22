@@ -140,3 +140,52 @@ What makes this defensible as a Mars-note deliverable is cuts 2/3/4, not cut 1. 
 `arms/v0-skill/arm.md` (2,761 words) derived from the 17-pitfall log; covers 19/21 authorship-relevant pitfalls. `arms/irrelevant-ctrl/arm.md` (2,818 words, 102% of v0-skill — within ±5% target) pulled from Gleam's tour, cheatsheet, and language reference.
 
 **Shape-alignment caveat.** The v0-skill uses standard OSP teaching archetypes — `Person`, `City`, `Road`, `Post` — as its code examples. `Road` with a `distance: float` edge field directly mirrors graph/06's setup; `Post` with a `views: int` counter mirrors walker/09's. Both are also stock teaching archetypes in Jaseci's own LLMDocs, so the comparison `v0-skill` vs `llmdocs` is not advantaged/disadvantaged by the choice. But `v0-skill` vs `no-skill` should read any walker/09 and graph/06 lift with this in mind — v0-skill may be partly "here's a pattern very close to the one the task needs" rather than purely "here's how Jac works." The per-stratum breakdown (cut 3) will make this visible: if lift concentrates on walker/09 and graph/06 specifically, pattern-proximity is the explanation. v1 SKILL.md authoring should explicitly avoid type names and field shapes used by any eval task to tighten this.
+
+---
+
+## 2026-04-21 — PR target for the `<++>` doc bug is upstream, not jaseci-llmdocs
+
+**Context.** After the mini-run landed, the plan was to capitalize on one of the 17 pitfalls as an upstream PR — concretely, to fix the `<++>` "Bidirectional" wording in `jac-llmdocs.md` and use it as a legitimate re-engagement hook with Mars. Pre-PR investigation changed the target.
+
+**What we found.**
+- `jaseci-labs/jaseci-llmdocs` is an internal build artifact, not a community project. 0 stars, 0 forks, 0 external PRs ever, no README, no CONTRIBUTING, no LICENSE. `release/jac-llmdocs.md` is *auto-generated* by `python run_pipeline.py` on every push touching `config/`, `src/`, or `config/rag_rules.txt`. Generation is an LLM call (Claude Opus 4.6, `temperature: 0.0, seed: 42`) that assembles the final doc from (a) upstream `jaseci-labs/jaseci` at `docs/docs/**.md`, plus (b) the in-repo prompt rules at `config/rag_rules.txt`. A PR that edits the generated `.md` directly would be overwritten on the next pipeline run.
+- The wrong "Bidirectional" wording for `<++>` lives verbatim in three upstream files in `jaseci-labs/jaseci`:
+  - `docs/docs/quick-guide/syntax-cheatsheet.md` (`a <++> b; # Bidirectional a <-> b`)
+  - `docs/docs/reference/language/osp.md` § Edges.3 (`a <++> b; # Undirected: a ↔ b (creates edges both ways)`)
+  - `docs/docs/reference/language/foundation.md` § Graph Operators (`node1 <++> node2; # Bidirectional`)
+  - plus the same framing applied to the typed form in `osp.md` § Graph Construction.2 (`Bidirectional typed`)
+- `config/rag_rules.txt` never mentions `<++>` / "bidirectional" / "undirected" / "symmetric" at all. The rag rules only prescribe typed-edge syntax. So the wrongness is inherited 1:1 from upstream docs, not invented by the assembly step.
+- `jaseci-labs/jaseci` is the *right* target and it is *very* active. 10+ PRs merged on 2026-04-21 alone, same-day turnaround. Has `CONTRIBUTING.md` at root, no CLA, fork-and-PR flow. Requires a release-note fragment at `docs/docs/community/release_notes/unreleased/<package>/<PR#>.<category>.md` (category `docs` fits).
+
+**Skeptical check on the fix.** Pre-PR worry: maybe the Jaseci team defends "undirected storage" as a conceptual stance elsewhere, and the right PR is a doc-clarification not a correction. Verdict: no. The `osp.md` that claims `<++>` "creates edges both ways" in § Edges.3 itself treats `[<-->]` as a query-time direction-agnostic traversal in § Walkers.3 (`visit [<-->]; # Visit both directions`) and § Data Spatial Queries.1 (`both = [<-->]; # Both directions`). The Edges.3 section is the outlier. Fixing it aligns it with the framing the rest of the doc already uses — not a semantic change, a consistency correction.
+
+**Decision.** PR goes to `jaseci-labs/jaseci`, bundling the three files (syntax-cheatsheet, osp.md § Edges.3, foundation.md Graph Operators), plus the `<+: Type :+>` "Bidirectional typed" label in osp.md § Graph Construction.2. One PR, four files. Include a runtime-probe snippet (`a <++> b; print([b -->]);` → `[]`) in the PR body as evidence. Add release-note fragment under `docs/docs/community/release_notes/unreleased/jaclang/<PR#>.docs.md`.
+
+**What to watch for downstream.**
+- **Framing of the Mars note changes.** We can no longer say "we found a bug in your jac-llmdocs and submitted a fix." The honest framing is: "we found a bug in your canonical docs (upstream of the LLM-assembled llmdocs) and submitted a fix there." The upstream attribution is *more* impressive, not less — it means the bug has been propagating to every LLM-generated doc downstream of your canonical source. But the wording must be accurate.
+- **Any future `jac-pitfalls.md` entry that names `jac://docs/...` as the wrong source** should also point to the upstream `jaseci-labs/jaseci/docs/docs/**.md` path, since that's what actually ships the wrongness. Default hypothesis for any llmdocs.md vs. runtime contradiction: look upstream first; `rag_rules.txt` only shapes a narrow set of topics it chose to pin (typed-edge syntax, a handful of idiom rules).
+- **Zero external-PR history on jaseci-llmdocs** is worth remembering if we ever need to contribute to the assembly pipeline itself (e.g. expanding `rag_rules.txt` to cover more pitfalls). We'd be the first external PR there, which could be faster or slower than a normal repo depending on who's on call for the bot.
+
+**Process note.** This is the first time in v0 that an investigation changed a downstream plan (PR target) materially. The five-minute check — "is the artifact I'm about to fix actually the source?" — paid for itself. Worth making it standard for any future "upstream" contribution: verify the repo accepts community PRs AND that the file is hand-maintained, before writing a single line of the PR.
+
+---
+
+## 2026-04-22 — PR #5665 review state and wording revision
+
+**What happened.** PR [jaseci-labs/jaseci#5665](https://github.com/jaseci-labs/jaseci/pull/5665) opened 2026-04-21 with replacement wording describing `<++>` as creating a single directed edge. Two rounds of review pushback on 2026-04-22:
+
+1. **kiptuidenis (maintainer)** pointed at [#5575](https://github.com/jaseci-labs/jaseci/pull/5575) ("Ensure bidirectional traversal for undirected edges"), suggesting "upgrade to jac 14.0 fixes it." Factually off on the release timing — #5575 merged 2026-04-17 at commit `c0496f79`, and `jaclang-v0.14.0` was tagged 2026-04-16. `git tag --contains c0496f79` returns empty; no released jaclang has the fix. Pre-upgrade and post-upgrade probes both reproduced `[b -->] == []` on 0.13.5 and 0.14.0.
+2. **Copilot** flagged 5 inline threads objecting that, on current `main`, `<++>` creates a single *undirected* edge (`is_undirected=True`), not a directed `a → b` edge. Copilot is correct about main — the revised wording originally described pre-#5575 behavior.
+
+**What we learned.** #5575 changes storage: `<++>` now stores a single edge with `is_undirected=True`, and the runtime's `get_edges` / `edges_to_nodes` treat `effective_dir = ANY` when the edge is undirected. Still one edge. The docs' "creates edges both ways" wording has never been accurate — not on pre-fix (one directed edge) and not on post-fix (one undirected edge). PR target is `main`, so the accurate replacement describes post-#5575 single-undirected-edge semantics. Revised commit `11824d87f` pushed; kiptuidenis reply and 5 Copilot inline replies posted; inline threads resolved.
+
+**What to watch for downstream.**
+
+- **Harness version drift.** jaceval's `.venv` is on jaclang **0.14.0**. `pyproject.toml` pins no jaclang version directly (only `jac-mcp>=0.1.10`, which pulls jaclang transitively). For v0's runs, `<++>` semantics are pre-#5575 (single directed edge; `[b -->]` → `[]`). If the venv is ever rebuilt or someone bumps jaclang past whatever release first includes #5575, the pitfall regime flips. Any task solution that relies on `<++>` asymmetric traversal would score differently.
+- **v0 scope stance.** Do not touch `tasks/**` in response to this. Controller to decide whether any task rubric should shift — flagged separately.
+- **Methodology implication for the llmdocs arm.** The llmdocs arm is pinned to the pre-fix llmdocs (v0.12.1). When the next jaclang release ships with #5575 and upstream docs get re-generated, the llmdocs arm will be evaluating against *pre-fix* semantics while the runtime exhibits *post-fix* semantics. Pre-registration shields us — the arm was locked before #5575 merged, and cross-arm paired comparisons still hold — but the absolute idiomaticity number for the `<++>` task under llmdocs should be interpreted as "idiomatic for the runtime the arm documents," not "idiomatic for current jaclang." First observed case of a pinned-arm doc going stale due to a runtime fix in flight during v0.
+- **Doc PR framing for the Mars note.** We now have a substantive story beyond "your docs say two edges and the runtime stores one." The richer story: the docs described two-edge storage on a runtime that never stored two edges; even after #5575 improved traversal symmetry, storage stayed at one edge. Our PR is the first time either set of wording aligns with either runtime regime. That's a cleaner hook than the original framing.
+
+**Skeptical check.** Could the reviewer be right in a way I'm missing — e.g., does `c0496f79` appear in some tag I overlooked? Verified: `git fetch upstream --tags` pulled everything; `git tag --contains c0496f79` returns empty on all of (`jaclang-v*`, `v*`, `jaseci-v*`) tag families. `pip install --upgrade jaclang` lands on 0.14.0, post-upgrade probe reproduces the bug. The fix is genuinely unreleased.
+
+**Process note.** "Upgrade to latest and re-run the probe" caught the review pushback cleanly — the upgrade itself was the evidence. Worth preserving as a default response to any reviewer claim of the form "X is fixed in version Y": install Y, re-run the probe, attach the output. Reviewer claims about release timing are especially easy to get wrong by a tag or a day.
