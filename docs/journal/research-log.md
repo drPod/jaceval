@@ -189,3 +189,17 @@ What makes this defensible as a Mars-note deliverable is cuts 2/3/4, not cut 1. 
 **Skeptical check.** Could the reviewer be right in a way I'm missing — e.g., does `c0496f79` appear in some tag I overlooked? Verified: `git fetch upstream --tags` pulled everything; `git tag --contains c0496f79` returns empty on all of (`jaclang-v*`, `v*`, `jaseci-v*`) tag families. `pip install --upgrade jaclang` lands on 0.14.0, post-upgrade probe reproduces the bug. The fix is genuinely unreleased.
 
 **Process note.** "Upgrade to latest and re-run the probe" caught the review pushback cleanly — the upgrade itself was the evidence. Worth preserving as a default response to any reviewer claim of the form "X is fixed in version Y": install Y, re-run the probe, attach the output. Reviewer claims about release timing are especially easy to get wrong by a tag or a day.
+
+---
+
+## 2026-04-24 — PR #5665 superseded by maintainer-authored #5672
+
+**What happened.** kiptuidenis (the same maintainer who had pushed back two days earlier) opened [#5672](https://github.com/jaseci-labs/jaseci/pull/5672) on 2026-04-22 with the comment *"you are absolutely right; since `<++>` stores a single undirected edge at the runtime level, describing it as 'two edges' or 'both ways' was misleading"* — and asked us to review. After two days of silence on our end (gap is on us, not him), we approved #5672 with one non-blocking suggestion (add a `[<-->]` query-side cross-reference in `osp.md`), and closed #5665 as superseded.
+
+**What #5672 does differently.** Smaller-scope, conservative wording fixes — pure label/gloss swaps, no rewrite of `osp.md` § Edges.3. But three files we missed: `appendices.md` (operator table), `library-mode.md` (the `build_edge(is_undirected, ...)` API doc), and `tutorials/language/coding_primer.md`. Net: better coverage, shallower per-site rewrite. Trade-off lands on the side of the maintainer's PR.
+
+**What this changes for the Mars-note framing.** Stronger story than "our PR merged." The actual sequence is: (1) we found the bug while building jaceval, (2) opened a doc PR with a runtime probe as evidence, (3) the maintainer initially pushed back citing #5575, (4) we caught the version-timing gap (#5575 merged one day after v0.14.0 was tagged) and revised our wording to match post-#5575 semantics, (5) the maintainer accepted the substantive point, opened a broader fix on their own initiative, and asked us to review. That's a collaboration outcome, not an external contribution. Worth foregrounding in the writeup over "we landed a doc PR" — same finding, more credible scaffolding.
+
+**What to watch for downstream.** None directly from this. The pinned-arm staleness watchpoint from the 2026-04-22 entry still stands: when the next jaclang release ships #5575, the llmdocs arm (frozen at v0.12.1) will be evaluating against pre-fix semantics while users running current jaclang will see post-fix behavior. Rubric/pitfall re-check trigger remains the same.
+
+**Process note.** Two-day silence after a maintainer asks for review is the worst state — reads as either flaky or passive-aggressive, neither of which is true here. Default rule: if a maintainer engages substantively, respond inside 24h even if the response is just "looking — back to you by EOD tomorrow." The cost of a holding-pattern reply is zero; the cost of two days of silence is non-zero on the relationship.
