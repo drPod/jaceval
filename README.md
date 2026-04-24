@@ -42,6 +42,41 @@ entries land 2026-04-21 after Groq's daily quota resets. Full writeup in
 
 ---
 
+## Where things stand (2026-04-24)
+
+v0 mini-run pipeline is end-to-end working: 4 arms × 1 generator (Llama-4-Scout)
+× 10 tasks × 3 samples, with judge validation at Cohen's κ = 0.500. Preliminary
+numbers above. `pyproject.toml` pins `jaclang==0.14.0` for reproducibility — see
+the upstream-PR aside below for why that pin matters.
+
+**Upstream contribution byproduct.** Authoring the pitfall log surfaced a
+doc-vs-runtime discrepancy on `<++>` ("Bidirectional" wording in canonical Jaseci
+docs that no version of the runtime actually implemented). Filed as
+[jaseci-labs/jaseci#5665](https://github.com/jaseci-labs/jaseci/pull/5665);
+during review, the maintainer (kiptuidenis) accepted the substantive point and
+opened [#5672](https://github.com/jaseci-labs/jaseci/pull/5672) — a broader
+fix covering three additional files we hadn't touched. #5665 closed as
+superseded; #5672 still open as of 2026-04-24. Sequence is documented in
+[`docs/journal/research-log.md`](docs/journal/research-log.md) (entries dated
+2026-04-21, 2026-04-22, 2026-04-24).
+
+**Picking back up — read in this order:**
+
+1. [`docs/journal/research-log.md`](docs/journal/research-log.md) — chronological
+   process log; the bottom of the file is current state.
+2. [`docs/findings/jac-pitfalls.md`](docs/findings/jac-pitfalls.md) — 17+
+   pitfalls; cited by the judge rubric and the `v0-skill` arm.
+3. [`results/RESULTS.md`](results/RESULTS.md) — preliminary numbers.
+4. [`docs/specs/2026-04-20-pre-registration.md`](docs/specs/2026-04-20-pre-registration.md)
+   — pre-registered effect-size thresholds. Frozen before results.
+
+**What v1 needs** (full scope-up checklist in *Known limitations* below):
+3 generators × 5 samples on paid tier, no-op noise-floor arm, scale tasks
+10 → 40, expand judge-validation corpus 15 → 30+ snippets, the `by llm()`
+language-primitive bucket.
+
+---
+
 ## Why this eval is worth looking at
 
 A defensible LLM-codegen eval for a niche language has to answer four things,
