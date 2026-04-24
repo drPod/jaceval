@@ -66,7 +66,9 @@ v0 of the first published-quality Jac codegen eval — a paired A/B benchmark me
 
 ### Provenance
 
-Built in response to an invitation from **Prof. Jason Mars / Jaseci Labs** (2026-04-09) to prototype *"the best .md or skill that makes the model as smart as possible in coding in Jac, and a methodology to evaluate it."* Jason is also the author of the `jac-mcp` server this project builds on. The research direction connects to his broader interest — hinted the same day via [pi.dev](https://pi.dev) — in harnesses for *educating foundation models on niche languages*, which goes beyond any single SKILL.md.
+Started as a prototype in response to an invitation from **Prof. Jason Mars / Jaseci Labs** (2026-04-09) to demonstrate *"the best .md or skill that makes the model as smart as possible in coding in Jac, and a methodology to evaluate it."* Jason is also the author of the `jac-mcp` server this project builds on. The research direction connects to his broader interest — hinted the same day via [pi.dev](https://pi.dev) — in harnesses for *educating foundation models on niche languages*, which goes beyond any single SKILL.md.
+
+The v0 work led to a follow-up call (2026-04-23) and a **part-time research affiliation with Jaseci Labs** (~5 hrs/week, paid). Onboarding in progress as of 2026-04-23: paperwork handled by **Lingjia** (lab admin); in-person kickoff planned for **May 2026**. Practical implication for the work itself: jaceval is no longer scoped as an outside contributor's pitch but as ongoing lab-affiliated research. The `Mars writeup` deliverable referenced elsewhere in this repo is now an internal lab artifact rather than an external proposal — tone, framing, and what's "shareable" should reflect that.
 
 Two deliverables are first-class, not one: a validated evaluation **methodology** and a **SKILL.md** whose quality is measured by that methodology. The SKILL.md is authored *after* the baseline run, targeted at the specific failure modes the baseline reveals, then re-evaluated on the same harness.
 
