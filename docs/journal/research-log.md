@@ -203,3 +203,40 @@ What makes this defensible as a Mars-note deliverable is cuts 2/3/4, not cut 1. 
 **What to watch for downstream.** None directly from this. The pinned-arm staleness watchpoint from the 2026-04-22 entry still stands: when the next jaclang release ships #5575, the llmdocs arm (frozen at v0.12.1) will be evaluating against pre-fix semantics while users running current jaclang will see post-fix behavior. Rubric/pitfall re-check trigger remains the same.
 
 **Process note.** Two-day silence after a maintainer asks for review is the worst state — reads as either flaky or passive-aggressive, neither of which is true here. Default rule: if a maintainer engages substantively, respond inside 24h even if the response is just "looking — back to you by EOD tomorrow." The cost of a holding-pattern reply is zero; the cost of two days of silence is non-zero on the relationship.
+
+---
+
+## 2026-04-24 (later) — #5672 closed over internal naming dispute; doc bug stays live
+
+**What happened.** ~5h after we approved #5672, [Thamirawaran](https://github.com/Thamirawaran) (a different Jaseci collaborator, not kiptuidenis) commented and the PR was closed within 6 minutes. The comment, in full:
+
+> As we can traverse bidirectionally through bidirectional edge, it should be bi directional. why we need to name it as undirected?
+> Let me clarify
+> Initially there was a bug in creation of bidirectional edges. This issue is fixed in #5575. and PR naming has conflict. But anyway it is bidirectional edge. therefore this issue is currently outdated. And make sure in all of our documentation we keep the naming as bidirectional edge.
+
+This is two Jaseci collaborators publicly disagreeing on internal terminology:
+
+- **kiptuidenis** (opened #5672, accepted our framing): post-#5575 it's a "single **undirected** edge" — CS-standard terminology matching the runtime's `is_undirected=True` flag.
+- **Thamirawaran** (closed #5672): keep the historical "**bidirectional**" branding because user-facing traversal is bidirectional. Considers #5575 to have resolved the issue and the PR therefore "outdated."
+
+**What didn't get addressed.** Thamirawaran's comment defends the *label* but doesn't address the original wrong wording — `osp.md` § Edges.3 currently says `<++>` "creates edges both ways" (plural — implying two-edge storage). That's wrong under either naming convention. No version of the runtime ever stored two edges. By closing without re-scoping, the misleading prose stays in the docs.
+
+**Decision: don't re-engage on the closed PR.** Two reasons:
+
+1. **Path-dependence on the lab affiliation.** Onboarding paperwork is in flight; May 2026 in-person kickoff. Re-opening a closed PR to argue terminology with a soon-to-be-colleague is the wrong way to enter — the expected value is negative regardless of who's right on the merits.
+2. **The substantive point survives.** "Creates edges both ways" being wrong is independent of the bidirectional-vs-undirected dispute. Once onboarded, raise it through internal channels: small ask, both collaborators would likely agree on the prose fix, just need someone with insider standing to mediate. That person isn't us yet.
+
+**What this means for the Mars-note framing.** Genuinely *more* interesting research material than a clean merge would have been. The story it tells:
+
+- LLM-facing docs at Jaseci have inherited terminology that two of the lab's own collaborators disagree about.
+- "Is the doc accurate" is downstream of "is the org aligned on what the operator IS called."
+- For a SKILL.md or LLMDocs to be reliable on a niche language, the **upstream-org alignment problem** has to be solved first — or at minimum surfaced and worked around.
+- jaceval's methodology *can* detect this kind of inconsistency (probe-based pitfall discovery + cross-arm comparison), even though it can't fix it. That's a methodology win, not a methodology gap.
+
+**What to watch for downstream.**
+
+- **Pitfall-log wording.** `docs/findings/jac-pitfalls.md` currently calls out "Bidirectional connect is misleading" using "undirected" as the contrasting term. With the lab apparently preferring "bidirectional" as the label, the *finding* still stands (one edge, not two; storage vs. traversal distinction) but the framing should not editorialize on the label dispute. Keep the pitfall about runtime behavior; don't take a side on what to call it.
+- **README "Where things stand" section** — needs the closure noted so future-self isn't surprised that #5672 isn't merged.
+- **Mars writeup** — the closure is a feature of the story, not a bug. Don't apologize for it; lead with it as evidence that the methodology surfaces upstream-org problems that LLM-docs work alone can't solve.
+
+**Process note.** When a closed-PR outcome isn't a clean win or a clean loss but a "the upstream org disagreed with itself," the right artifact to update is the journal, not the PR. Re-engaging on the PR re-litigates; updating the journal preserves the evidence and lets the next conversation start from a clean position.

@@ -56,9 +56,13 @@ docs that no version of the runtime actually implemented). Filed as
 during review, the maintainer (kiptuidenis) accepted the substantive point and
 opened [#5672](https://github.com/jaseci-labs/jaseci/pull/5672) — a broader
 fix covering three additional files we hadn't touched. #5665 closed as
-superseded; #5672 still open as of 2026-04-24. Sequence is documented in
-[`docs/journal/research-log.md`](docs/journal/research-log.md) (entries dated
-2026-04-21, 2026-04-22, 2026-04-24).
+superseded; #5672 then closed by a different Jaseci collaborator over an
+internal "bidirectional" vs "undirected" naming-convention dispute. The
+underlying "creates edges both ways" wording (the actual doc bug) remains
+live in canonical docs as of 2026-04-24. Not re-engaging on the closed PR
+— intent is to raise the prose fix internally once lab onboarding lands.
+Full chronology in [`docs/journal/research-log.md`](docs/journal/research-log.md)
+(entries dated 2026-04-21, 2026-04-22, and two on 2026-04-24).
 
 **Picking back up — read in this order:**
 
